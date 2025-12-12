@@ -9,8 +9,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // New Form Elements
     const moodSelector = document.getElementById('mood-selector');
-    const privacySlider = document.getElementById('privacy-level');
-    const privacyLabel = document.getElementById('privacy-label');
     const moodTags = document.querySelectorAll('.mood-tag');
     let selectedMood = '';
 
@@ -129,8 +127,6 @@ document.addEventListener('DOMContentLoaded', () => {
         dreamInput.value = '';
         selectedMood = '';
         moodTags.forEach(tag => tag.classList.remove('selected'));
-        privacySlider.value = 1;
-        updatePrivacyLabel(1);
         document.querySelector('input[name="entry-type"][value="dream"]').checked = true;
     }
 
@@ -143,16 +139,6 @@ document.addEventListener('DOMContentLoaded', () => {
             selectedMood = tag.dataset.mood;
         });
     });
-
-    // 私密等级滑块逻辑
-    privacySlider.addEventListener('input', (e) => {
-        updatePrivacyLabel(e.target.value);
-    });
-
-    function updatePrivacyLabel(value) {
-        const labels = { '1': '公开', '2': '仅好友', '3': '私密' };
-        privacyLabel.textContent = labels[value];
-    }
 
     // 导航点击事件
     navItems.forEach(item => {
@@ -183,7 +169,6 @@ document.addEventListener('DOMContentLoaded', () => {
     saveBtn.addEventListener('click', () => {
         const text = dreamInput.value.trim();
         const type = document.querySelector('input[name="entry-type"]:checked').value;
-        const privacy = privacySlider.value; // 1, 2, or 3
         
         if (text) {
             const entry = {
@@ -191,7 +176,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 text: text,
                 type: type,
                 mood: selectedMood,
-                privacy: privacy,
                 date: new Date().toLocaleString('zh-CN', { hour12: false })
             };
             saveEntry(entry);
@@ -260,15 +244,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return typeMap[type] || '📝 记录';
     }
 
-    function getPrivacyIcon(level) {
-        const icons = {
-            '1': '🌍', // 公开
-            '2': '👥', // 好友
-            '3': '🔒'  // 私密
-        };
-        return icons[level] || '🌍';
-    }
-
     function loadEntries() {
         try {
             let entries = JSON.parse(localStorage.getItem('dream-entries') || '[]');
@@ -297,7 +272,6 @@ document.addEventListener('DOMContentLoaded', () => {
             entriesList.innerHTML = entries.map(entry => {
                 const moodEmoji = getMoodEmoji(entry.mood);
                 const typeLabel = getTypeLabel(entry.type);
-                const privacyIcon = getPrivacyIcon(entry.privacy);
                 
                 // 兼容旧数据
                 const text = entry.text || '';
@@ -310,11 +284,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const previewText = safeText.length > 80 ? safeText.substring(0, 80) + '...' : safeText;
                 
                 return `
-                <div class="dream-entry">
+                <div class="dream-entry" data-mood="${entry.mood || ''}">
                     <div class="dream-entry-header">
                         <div class="header-left">
                             <span class="date">${date}</span>
-                            <span class="privacy-icon" title="私密等级">${privacyIcon}</span>
                         </div>
                         <div class="meta-tags">
                             <span class="meta-tag">${typeLabel}</span>
