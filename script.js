@@ -18,6 +18,62 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalNewEntry = document.getElementById('modal-new-entry');
     const closeModalBtn = document.getElementById('close-modal-btn');
 
+    // Settings & Privacy Elements
+    const darkModeToggle = document.getElementById('dark-mode-toggle');
+    const btnPrivacyLock = document.getElementById('btn-privacy-lock');
+    const privacyStatusLabel = document.getElementById('privacy-status');
+    const btnExport = document.getElementById('btn-export-data');
+    const btnImport = document.getElementById('btn-import-data');
+    const importInput = document.getElementById('import-file-input');
+    const btnClear = document.getElementById('btn-clear-data');
+    
+    // Privacy Modal Elements
+    const modalPrivacy = document.getElementById('modal-privacy');
+    const closePrivacyBtn = document.getElementById('close-privacy-btn');
+    const privacyTitle = document.getElementById('privacy-modal-title');
+    const privacyTip = document.getElementById('privacy-tip');
+    const pinDots = document.querySelectorAll('.pin-dot');
+    const numBtns = document.querySelectorAll('.num-btn');
+    const btnDeletePin = document.getElementById('btn-delete-pin');
+
+    // State
+    let pinState = {
+        mode: 'idle', // idle, verify_start, verify_setting, set_new_1, set_new_2, disable_verify
+        tempPin: '',
+        currentInput: ''
+    };
+    
+    // Filter State
+    let currentFilter = {
+        type: null // null (all) or 'dream', 'diary', 'os'
+    };
+
+    // Filter Bar Elements
+    const filterBar = document.getElementById('filter-bar');
+    const filterInfo = document.getElementById('filter-info');
+    const clearFilterBtn = document.getElementById('clear-filter-btn');
+    
+    // 初始化应用
+    function initApp() {
+        // 1. 加载夜间模式
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            darkModeToggle.checked = true;
+        }
+
+        // 2. 检查隐私锁
+        const savedPin = localStorage.getItem('app-pin');
+        if (savedPin) {
+            privacyStatusLabel.textContent = '已开启';
+            // 启动时验证
+            startPinVerify('start');
+        } else {
+            privacyStatusLabel.textContent = '未开启';
+            loadEntries(); // 没锁直接加载
+        }
+    }
+
     // 路由/视图切换逻辑
     function switchView(targetId) {
         // 更新视图显示
@@ -156,9 +212,27 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function saveEntry(entry) {
-        let entries = JSON.parse(localStorage.getItem('dream-entries') || '[]');
-        entries.unshift(entry);
-        localStorage.setItem('dream-entries', JSON.stringify(entries));
+        try {
+            let entries = JSON.parse(localStorage.getItem('dream-entries') || '[]');
+            if (!Array.isArray(entries)) {
+                entries = [];
+            }
+            entries.unshift(entry);
+            localStorage.setItem('dream-entries', JSON.stringify(entries));
+        } catch (e) {
+            console.error('Failed to save entry:', e);
+            alert('保存失败，请检查存储空间或重试。');
+        }
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        return text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
     }
 
     function getMoodEmoji(mood) {
@@ -197,9 +271,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function loadEntries() {
         try {
-            const entries = JSON.parse(localStorage.getItem('dream-entries') || '[]');
+            let entries = JSON.parse(localStorage.getItem('dream-entries') || '[]');
+            
+            // 应用筛选
+            if (currentFilter.type) {
+                entries = entries.filter(e => e.type === currentFilter.type);
+                
+                // 更新筛选条 UI
+                filterBar.classList.remove('hidden');
+                const typeName = getTypeLabel(currentFilter.type).split(' ')[1];
+                filterInfo.textContent = `正在查看: ${typeName}`;
+            } else {
+                filterBar.classList.add('hidden');
+            }
+
             if (entries.length === 0) {
-                entriesList.innerHTML = '<div class="empty-state">还没有记录，点击右下角“+”号开始记录你的第一个梦境吧！</div>';
+                if (currentFilter.type) {
+                     entriesList.innerHTML = '<div class="empty-state">该分类下暂无记录</div>';
+                } else {
+                     entriesList.innerHTML = '<div class="empty-state">还没有记录，点击右下角“+”号开始记录你的第一个梦境吧！</div>';
+                }
                 return;
             }
             
@@ -213,7 +304,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const date = entry.date || '';
                 
                 // 处理长文本预览 (例如只显示前 80 个字符)
-                const previewText = text.length > 80 ? text.substring(0, 80) + '...' : text;
+                // 先转义，再截断可能会截断转义字符，所以先截断再转义 (但这不安全，因为截断可能正好在 tag 中间)
+                // 正确做法：先转义，然后作为纯文本显示。这里我们把 text 视为纯文本。
+                const safeText = escapeHtml(text);
+                const previewText = safeText.length > 80 ? safeText.substring(0, 80) + '...' : safeText;
                 
                 return `
                 <div class="dream-entry">
@@ -305,22 +399,26 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // 排序并取前 5
+        // 排序并取前 8 (泡泡图可以多放一点)
         const sortedMoods = Object.entries(moodCounts)
             .sort((a, b) => b[1] - a[1])
-            .slice(0, 5);
-
-        container.innerHTML = sortedMoods.map(([mood, count]) => {
-            const percent = Math.round((count / totalMoods) * 100);
+            .slice(0, 8);
+        
+        // 计算最大值，用于归一化气泡大小
+        const maxCount = sortedMoods[0][1];
+        
+        container.innerHTML = sortedMoods.map(([mood, count], index) => {
+            // 基础大小 60px，根据频率增加，最大增加到 100px
+            const size = 60 + (count / maxCount) * 40; 
+            // 延迟动画
+            const delay = index * 0.1;
+            
             return `
-            <div class="mood-bar-item">
-                <div class="mood-bar-header">
-                    <span>${getMoodEmoji(mood)} ${getMoodLabel(mood)}</span>
-                    <span>${count}次</span>
-                </div>
-                <div class="mood-bar-track">
-                    <div class="mood-bar-fill" style="width: ${percent}%; background-color: var(--primary-color);"></div>
-                </div>
+            <div class="mood-bubble bubble-${mood}" 
+                 style="width: ${size}px; height: ${size}px; animation-delay: ${delay}s"
+                 title="${getMoodLabel(mood)}: ${count}次">
+                <span class="emoji">${getMoodEmoji(mood)}</span>
+                <span class="count">${count}</span>
             </div>
             `;
         }).join('');
@@ -333,32 +431,306 @@ document.addEventListener('DOMContentLoaded', () => {
             'diary': 0,
             'os': 0
         };
+        let total = 0;
 
         entries.forEach(e => {
             if (typeCounts[e.type] !== undefined) {
                 typeCounts[e.type]++;
+                total++;
             }
         });
 
-        if (entries.length === 0) {
+        if (total === 0) {
             container.innerHTML = '<div class="empty-chart">暂无数据</div>';
             return;
         }
 
+        const colors = {
+            'dream': '#9b9ece', // primary
+            'diary': '#ffb7b2', // accent
+            'os': '#a18cd1'     // calm
+        };
+
         container.innerHTML = Object.entries(typeCounts).map(([type, count]) => {
+            const percent = Math.round((count / total) * 100);
+            const color = colors[type];
+            // Conic gradient: color 0% -> percent%, transparent percent% -> 100%
+            // In CSS conic-gradient, we usually do: color 0deg, color Xdeg, transparent Xdeg
+            
             return `
-            <div class="type-stat-item">
-                <div class="type-circle">
-                    ${count}
+            <div class="type-ring-item" onclick="applyFilter('${type}')">
+                <div class="ring-chart" style="background: conic-gradient(${color} 0% ${percent}%, #f0f2f7 ${percent}% 100%);">
+                    <div class="ring-inner">
+                        <span class="ring-count">${count}</span>
+                        <span class="ring-percent">${percent}%</span>
+                    </div>
                 </div>
-                <span class="type-label">${getTypeLabel(type).split(' ')[1]}</span>
+                <span class="ring-label">${getTypeLabel(type).split(' ')[1]}</span>
             </div>
             `;
         }).join('');
     }
 
+    // Expose applyFilter to global scope so onclick works
+    window.applyFilter = function(type) {
+        currentFilter.type = type;
+        
+        // Switch to home view
+        switchView('view-home');
+        
+        // Ideally switchView handles tab active state, but we need to ensure data is reloaded
+        // switchView calls loadEntries() if target is view-home
+    };
+
+    if (clearFilterBtn) {
+        clearFilterBtn.addEventListener('click', () => {
+            currentFilter.type = null;
+            loadEntries();
+        });
+    }
+
     // 初始化：默认加载列表
-    loadEntries();
+    // loadEntries(); // Moved to initApp
+    initApp();
+
+    // Settings Event Listeners
+    if (darkModeToggle) {
+        darkModeToggle.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                document.documentElement.removeAttribute('data-theme');
+                localStorage.setItem('theme', 'light');
+            }
+        });
+    }
+
+    if (btnExport) {
+        btnExport.addEventListener('click', exportData);
+    }
+
+    if (btnImport) {
+        btnImport.addEventListener('click', () => importInput.click());
+        importInput.addEventListener('change', importData);
+    }
+
+    if (btnClear) {
+        btnClear.addEventListener('click', clearAllData);
+    }
+
+    if (btnPrivacyLock) {
+        btnPrivacyLock.addEventListener('click', () => {
+            const hasPin = localStorage.getItem('app-pin');
+            if (hasPin) {
+                // 如果已有 PIN，进入验证流程以关闭
+                startPinVerify('disable');
+            } else {
+                // 如果没有 PIN，进入设置流程
+                startPinVerify('set');
+            }
+        });
+    }
+
+    // Privacy Modal Logic
+    if (closePrivacyBtn) {
+        closePrivacyBtn.addEventListener('click', () => {
+            // 如果是启动验证，不允许关闭 (或者关闭就是退出? web 无法退出)
+            // 这里简单处理：如果是 start 模式，不让关，或者关了显示空白
+            if (pinState.mode === 'verify_start') return;
+            closePrivacyModal();
+        });
+    }
+
+    numBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const num = btn.dataset.num;
+            if (num !== undefined) {
+                handlePinInput(num);
+            }
+        });
+    });
+    
+    if (btnDeletePin) {
+        btnDeletePin.addEventListener('click', () => {
+            if (pinState.currentInput.length > 0) {
+                pinState.currentInput = pinState.currentInput.slice(0, -1);
+                updatePinDisplay();
+            }
+        });
+    }
+
+    // Functions for Settings
+    function exportData() {
+        const data = localStorage.getItem('dream-entries');
+        if (!data) {
+            alert('没有数据可导出');
+            return;
+        }
+        const blob = new Blob([data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `dream-journal-backup-${new Date().toISOString().slice(0,10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    function importData(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const data = JSON.parse(event.target.result);
+                if (Array.isArray(data)) {
+                    if (confirm(`准备导入 ${data.length} 条记录，這将覆盖现有记录吗？\n点击“确定”覆盖，点击“取消”追加。`)) {
+                         // 覆盖
+                         localStorage.setItem('dream-entries', JSON.stringify(data));
+                    } else {
+                        // 追加 (去重 id)
+                        const current = JSON.parse(localStorage.getItem('dream-entries') || '[]');
+                        const currentIds = new Set(current.map(c => c.id));
+                        const newEntries = data.filter(d => !currentIds.has(d.id));
+                        const merged = [...newEntries, ...current].sort((a,b) => b.id - a.id);
+                        localStorage.setItem('dream-entries', JSON.stringify(merged));
+                        alert(`已追加 ${newEntries.length} 条新记录`);
+                    }
+                    loadEntries();
+                    renderStats(); // 刷新统计
+                    alert('导入成功！');
+                } else {
+                    alert('文件格式错误：必须是 JSON 数组');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('导入失败：文件损坏或格式错误');
+            }
+            // Reset input
+            importInput.value = '';
+        };
+        reader.readAsText(file);
+    }
+
+    function clearAllData() {
+        if (confirm('确定要删除所有日记记录吗？此操作无法撤销！')) {
+            // 二次确认
+            if (confirm('再次确认：真的要清空所有数据吗？')) {
+                localStorage.removeItem('dream-entries');
+                loadEntries();
+                renderStats();
+                alert('数据已清空');
+            }
+        }
+    }
+
+    // Privacy Functions
+    function startPinVerify(mode) {
+        pinState.currentInput = '';
+        pinState.tempPin = '';
+        updatePinDisplay();
+        modalPrivacy.classList.add('active');
+
+        if (mode === 'start') {
+            pinState.mode = 'verify_start';
+            privacyTitle.textContent = '欢迎回来';
+            privacyTip.textContent = '请输入隐私密码解锁';
+            closePrivacyBtn.style.display = 'none'; // 强制输入
+        } else if (mode === 'set') {
+            pinState.mode = 'set_new_1';
+            privacyTitle.textContent = '设置密码';
+            privacyTip.textContent = '请输入4位新密码';
+            closePrivacyBtn.style.display = 'flex';
+        } else if (mode === 'disable') {
+            pinState.mode = 'disable_verify';
+            privacyTitle.textContent = '关闭隐私锁';
+            privacyTip.textContent = '请输入当前密码以验证';
+            closePrivacyBtn.style.display = 'flex';
+        }
+    }
+
+    function closePrivacyModal() {
+        modalPrivacy.classList.remove('active');
+        pinState.mode = 'idle';
+        pinState.currentInput = '';
+    }
+
+    function handlePinInput(num) {
+        if (pinState.currentInput.length < 4) {
+            pinState.currentInput += num;
+            updatePinDisplay();
+            
+            if (pinState.currentInput.length === 4) {
+                // Delay slightly to show the last dot
+                setTimeout(() => processPinLogic(), 100);
+            }
+        }
+    }
+
+    function updatePinDisplay() {
+        const len = pinState.currentInput.length;
+        pinDots.forEach((dot, index) => {
+            if (index < len) {
+                dot.classList.add('filled');
+            } else {
+                dot.classList.remove('filled');
+            }
+            dot.classList.remove('error');
+        });
+    }
+
+    function showPinError() {
+        pinDots.forEach(dot => dot.classList.add('error'));
+        if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
+        setTimeout(() => {
+            pinState.currentInput = '';
+            updatePinDisplay();
+        }, 400);
+    }
+
+    function processPinLogic() {
+        const input = pinState.currentInput;
+        const savedPin = localStorage.getItem('app-pin');
+
+        if (pinState.mode === 'verify_start') {
+            if (input === savedPin) {
+                closePrivacyModal();
+                loadEntries(); // 解锁成功，加载数据
+            } else {
+                showPinError();
+            }
+        } else if (pinState.mode === 'disable_verify') {
+            if (input === savedPin) {
+                localStorage.removeItem('app-pin');
+                privacyStatusLabel.textContent = '未开启';
+                closePrivacyModal();
+                alert('隐私锁已关闭');
+            } else {
+                showPinError();
+            }
+        } else if (pinState.mode === 'set_new_1') {
+            pinState.tempPin = input;
+            pinState.currentInput = '';
+            updatePinDisplay();
+            pinState.mode = 'set_new_2';
+            privacyTip.textContent = '请再次输入确认';
+        } else if (pinState.mode === 'set_new_2') {
+            if (input === pinState.tempPin) {
+                localStorage.setItem('app-pin', input);
+                privacyStatusLabel.textContent = '已开启';
+                closePrivacyModal();
+                alert('隐私锁设置成功！');
+            } else {
+                privacyTip.textContent = '两次输入不一致，请重试';
+                showPinError();
+                pinState.mode = 'set_new_1'; // Reset to first step
+                pinState.tempPin = '';
+            }
+        }
+    }
 
     // 注册 Service Worker (保持不变)
     if ('serviceWorker' in navigator) {
