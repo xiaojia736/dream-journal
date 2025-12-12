@@ -1,21 +1,21 @@
 {
-    "name": "星海日记",
-    "short_name": "日记",
-    "description": "私密的梦境与心情记录空间",
-    "start_url": "./index.html",
-    "display": "standalone",
-    "theme_color": "#E6E6FA",
-    "background_color": "#FAF9F6",
-    "icons": [
-        {
-            "src": "icons/icon-72x72.png",
-            "sizes": "72x72",
-            "type": "image/png"
-        },
-        {
-            "src": "icons/icon-512x512.png",
-            "sizes": "512x512",
-            "type": "image/png"
-        }
-    ]
+  "name": "星海日记",
+  "short_name": "星海日记",
+  "description": "私密的梦境与心情记录空间",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "theme_color": "#E6E6FA",
+  "background_color": "#FAF9F6",
+  "icons": [
+    {
+      "src": "icons/icon-72x72.png",
+      "sizes": "72x72",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
 }
