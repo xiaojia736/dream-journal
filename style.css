@@ -351,6 +351,59 @@ body::before {
     text-overflow: ellipsis;
 }
 
+/* 删除按钮样式 */
+.delete-entry-btn {
+    position: absolute;
+    bottom: 15px;
+    right: 15px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    opacity: 0; /* 默认完全隐藏 */
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+.delete-entry-btn svg {
+    width: 18px;
+    height: 18px;
+    stroke: currentColor;
+    stroke-width: 1.5;
+    fill: none;
+}
+
+/* 只有悬停在卡片上时才显示，或者在移动端点击时 */
+.dream-entry:hover .delete-entry-btn,
+.dream-entry:focus-within .delete-entry-btn {
+    opacity: 0.4;
+    transform: translateY(0);
+}
+
+.delete-entry-btn:hover {
+    opacity: 1 !important;
+    background: rgba(255, 107, 107, 0.1);
+    color: #ff6b6b;
+    transform: scale(1.1) rotate(5deg);
+    box-shadow: 0 0 10px rgba(255, 107, 107, 0.2);
+}
+
+.delete-entry-btn:active {
+    transform: scale(0.9);
+}
+
+/* 移动端适配：始终显示一点点，防止找不到 */
+@media (hover: none) {
+    .delete-entry-btn {
+        opacity: 0.2;
+    }
+}
+
 /* 新建日记编辑器 */
 .editor-container {
     height: 100%;
