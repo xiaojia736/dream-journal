@@ -80,8 +80,17 @@ h1, h2, h3, .date, .time, .num-btn {
     font-style: italic;
 }
 
-p, .entry-preview, textarea, input, .stat-label, .nav-item .label {
+/* 默认正文使用霞鹜文楷 */
+p, textarea, input, .stat-label, .nav-item .label {
     font-family: 'LXGW WenKai Screen', sans-serif;
+}
+
+/* 手写字体应用：日记预览 & 详情正文 */
+.entry-preview, #detail-text {
+    font-family: 'Long Cang', cursive;
+    line-height: 1.8;
+    font-size: 1.2rem;
+    letter-spacing: 1px;
 }
 
 body::before {
@@ -151,6 +160,183 @@ body::before {
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(5px); }
     to { opacity: 1; transform: translateY(0); }
+}
+
+/* 搜索框容器 */
+.search-container {
+    position: relative;
+    margin-bottom: 1rem;
+    animation: fadeIn 0.3s ease;
+}
+
+#search-input {
+    width: 100%;
+    padding: 1rem 1rem 1rem 3rem; /* 左侧留给图标 */
+    background: var(--card-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--border-radius);
+    box-shadow: var(--card-shadow);
+    color: var(--text-main);
+    font-size: 1rem;
+    font-family: 'LXGW WenKai Screen', sans-serif;
+    transition: all 0.3s ease;
+    outline: none;
+}
+
+#search-input::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.7;
+}
+
+#search-input:focus {
+    background: rgba(255, 255, 255, 0.6);
+    border-color: var(--primary-light);
+    box-shadow: 0 0 15px rgba(161, 140, 209, 0.2);
+    transform: translateY(-2px);
+}
+
+.search-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.2rem;
+    color: var(--text-secondary);
+    pointer-events: none;
+    opacity: 0.6;
+}
+
+/* 深色模式适配 */
+[data-theme="dark"] #search-input:focus {
+    background: rgba(40, 42, 54, 0.8);
+    border-color: rgba(255,255,255,0.2);
+}
+
+/* 时光胶囊样式 */
+.flashback-card {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.6) 0%, rgba(240, 242, 255, 0.6) 100%);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: var(--border-radius);
+    padding: 1rem 1.2rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(161, 140, 209, 0.15);
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    overflow: hidden;
+    animation: fadeIn 0.5s ease-out;
+}
+
+.flashback-card:hover {
+    transform: translateY(-3px) scale(1.01);
+    box-shadow: 0 8px 25px rgba(161, 140, 209, 0.25);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(240, 242, 255, 0.8) 100%);
+}
+
+/* 流光效果 */
+.flashback-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    transform: skewX(-15deg);
+    animation: shine 6s infinite;
+}
+
+@keyframes shine {
+    0% { left: -100%; }
+    20% { left: 100%; }
+    100% { left: 100%; }
+}
+
+.flashback-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary-color);
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 50%;
+    box-shadow: 0 4px 10px rgba(161, 140, 209, 0.2);
+    animation: float 3s ease-in-out infinite;
+}
+
+.flashback-icon svg {
+    width: 24px;
+    height: 24px;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+
+.flashback-content {
+    flex: 1;
+    overflow: hidden;
+}
+
+.flashback-title {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--primary-dark);
+    margin-bottom: 0.2rem;
+    opacity: 0;
+    animation: fadeInUp 0.6s ease-out forwards 0.2s; /* 延迟出现 */
+}
+
+.flashback-text {
+    font-family: 'LXGW WenKai Screen', sans-serif;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0;
+    animation: fadeInUp 0.6s ease-out forwards 0.4s; /* 再延迟 */
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.flashback-arrow {
+    color: #ccc;
+    font-size: 1.2rem;
+    opacity: 0.6;
+}
+
+/* 深色模式适配 */
+[data-theme="dark"] .flashback-card {
+    background: linear-gradient(135deg, rgba(45, 47, 69, 0.6) 0%, rgba(36, 37, 54, 0.6) 100%);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .flashback-card:hover {
+    background: linear-gradient(135deg, rgba(55, 57, 85, 0.8) 0%, rgba(46, 47, 70, 0.8) 100%);
+}
+
+[data-theme="dark"] .flashback-card::before {
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
 }
 
 /* 筛选状态条 */
@@ -411,6 +597,140 @@ body::before {
     display: flex;
     flex-direction: column;
     gap: 1.2rem;
+}
+
+/* 标签输入区域 */
+.tag-input-container {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background: #fcfcfd;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    min-height: 46px;
+    transition: all 0.2s;
+}
+
+.tag-input-container:focus-within {
+    border-color: var(--primary-color);
+    background: white;
+}
+
+#tag-input {
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 0.9rem;
+    flex: 1;
+    min-width: 100px;
+    padding: 4px;
+    color: var(--text-main);
+    font-family: 'LXGW WenKai Screen', sans-serif;
+}
+
+/* 标签气泡样式 - Glassmorphism & Pill Shape */
+.tag-pill {
+    background: rgba(255, 255, 255, 0.5);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px; /* Pill shape */
+    padding: 4px 10px;
+    font-size: 0.8rem;
+    color: var(--primary-dark);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    animation: fadeIn 0.2s ease;
+    cursor: default;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+    /* 玻璃质感增强 */
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+.tag-remove {
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+    font-weight: bold;
+}
+
+.tag-remove:hover {
+    opacity: 1;
+    color: #ff6b6b;
+}
+
+/* 列表和详情中的标签展示 */
+.entry-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.8rem;
+}
+
+.entry-tag-item {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.3);
+    padding: 2px 10px;
+    border-radius: 12px; /* Pill shape */
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    /* Glassmorphism */
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+.entry-tag-item::before {
+    content: '# ';
+    opacity: 0.6;
+}
+
+/* 深色模式适配 */
+[data-theme="dark"] .tag-input-container {
+    background: #1f202e;
+    border-color: #444;
+}
+
+[data-theme="dark"] .tag-pill {
+    background: rgba(255, 255, 255, 0.1);
+    color: #daddff;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .entry-tag-item {
+    background: rgba(255, 255, 255, 0.05);
+    color: #9ca3af;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* 记忆收集动画相关 */
+.flying-particle {
+    position: fixed;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--gradient-primary);
+    box-shadow: 0 0 10px rgba(168, 85, 247, 0.8), 0 0 20px rgba(236, 72, 153, 0.6);
+    pointer-events: none;
+    z-index: 9999;
+    /* 初始状态由 JS 控制位置 */
+}
+
+/* 目标图标反馈动画 */
+.icon-bounce {
+    animation: iconBounce 0.6s cubic-bezier(0.36, 0, 0.66, -0.56);
+    color: var(--primary-color) !important;
+}
+
+@keyframes iconBounce {
+    0% { transform: scale(1); }
+    30% { transform: scale(1.4); filter: drop-shadow(0 0 10px var(--primary-light)); }
+    50% { transform: scale(0.9); }
+    70% { transform: scale(1.1); }
+    100% { transform: scale(1); }
 }
 
 /* 底部导航栏 */
@@ -990,19 +1310,77 @@ body::before {
     opacity: 0.9;
 }
 
-/* 气泡颜色定义 */
-.bubble-happy { background: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 100%); }
-.bubble-calm { background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%); }
-.bubble-sad { background: linear-gradient(135deg, #89f7fe 0%, #66a6ff 100%); }
-.bubble-anxious { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
-.bubble-excited { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
-.bubble-confused { background: linear-gradient(135deg, #cfd9df 0%, #e2ebf0 100%); color: #666; }
-.bubble-scared { background: linear-gradient(135deg, #434343 0%, #black 100%); }
+/* 情绪 SVG 图标通用样式 */
+.mood-icon-svg {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.4em;
+    height: 1.4em;
+    vertical-align: middle;
+}
+
+.mood-icon-svg svg {
+    width: 100%;
+    height: 100%;
+    fill: currentColor;
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.1));
+    /* 毛玻璃印刻感 */
+    opacity: 0.8;
+}
+
+/* 气泡颜色定义 - 莫兰迪/马卡龙色盘 */
+.bubble-happy { background: linear-gradient(135deg, #FFD166 0%, #FFECB3 100%); } /* 温暖的夕阳黄 */
+.bubble-excited { background: linear-gradient(135deg, #FFD166 0%, #FFECB3 100%); } /* 复用开心色 */
+.bubble-calm { background: linear-gradient(135deg, #06D6A0 0%, #80EDCE 100%); } /* 清透的海水绿 */
+.bubble-sad { background: linear-gradient(135deg, #118AB2 0%, #7ACFE6 100%); } /* 忧郁的深海蓝 */
+.bubble-anxious { background: linear-gradient(135deg, #118AB2 0%, #7ACFE6 100%); } /* 复用难过色 */
+.bubble-confused { background: linear-gradient(135deg, #EF476F 0%, #F7A8B8 100%); } /* 柔和的珊瑚粉 */
+.bubble-scared { background: linear-gradient(135deg, #EF476F 0%, #F7A8B8 100%); } /* 复用珊瑚粉 */
 
 @keyframes popIn {
     0% { opacity: 0; transform: scale(0); }
     80% { transform: scale(1.1); }
     100% { opacity: 1; transform: scale(1); }
+}
+
+/* 情绪足迹 - 热力图 */
+.heatmap-container {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr); /* 一周7天 */
+    gap: 6px;
+    padding: 5px;
+    margin-top: 10px;
+}
+
+.heatmap-day {
+    aspect-ratio: 1; /* 正方形 */
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.05); /* 默认占位色 */
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.heatmap-day.has-data {
+    box-shadow: 0 0 8px rgba(0,0,0,0.1);
+    cursor: default;
+}
+
+/* 带有微弱发光 */
+.heatmap-day.has-data::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 6px;
+    background: inherit;
+    filter: blur(4px);
+    opacity: 0.6;
+    z-index: -1;
+}
+
+/* 深色模式适配 */
+[data-theme="dark"] .heatmap-day {
+    background: rgba(255, 255, 255, 0.05);
 }
 
 /* 类型迷你圆环图 */

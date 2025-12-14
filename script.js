@@ -23,6 +23,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const detailMood = document.getElementById('detail-mood');
     const detailType = document.getElementById('detail-type');
     const detailText = document.getElementById('detail-text');
+    
+    // Tag System Elements
+    const tagInput = document.getElementById('tag-input');
+    const tagsContainer = document.getElementById('tags-container');
+    let currentTags = [];
 
     // Settings & Privacy Elements
     const darkModeToggle = document.getElementById('dark-mode-toggle');
@@ -51,7 +56,8 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Filter State
     let currentFilter = {
-        type: null // null (all) or 'dream', 'diary', 'os'
+        type: null, // null (all) or 'dream', 'diary', 'os'
+        tag: null   // NEW: tag filter
     };
 
     // Filter Bar Elements
@@ -59,6 +65,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const filterInfo = document.getElementById('filter-info');
     const clearFilterBtn = document.getElementById('clear-filter-btn');
     
+    // Search Element
+    const searchInput = document.getElementById('search-input');
+
+    // Flashback Element
+    const flashbackCard = document.getElementById('flashback-card');
+
     // 初始化应用
     function initApp() {
         // 1. 加载夜间模式
@@ -77,6 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             privacyStatusLabel.textContent = '未开启';
             loadEntries(); // 没锁直接加载
+            renderFlashback(); // 加载时光胶囊
         }
     }
 
@@ -96,8 +109,41 @@ document.addEventListener('DOMContentLoaded', () => {
         // 设置类型标签
         detailType.textContent = getTypeLabel(entry.type);
         
+        // 渲染详情页标签
+        const tags = entry.tags || [];
+        let tagsContainer = document.getElementById('detail-tags-container');
+        if (!tagsContainer) {
+            tagsContainer = document.createElement('div');
+            tagsContainer.id = 'detail-tags-container';
+            tagsContainer.className = 'entry-tags';
+            tagsContainer.style.marginTop = '1rem';
+            // 插入到 modal-body 的开头或结尾? 放在 meta 下面比较好
+            document.querySelector('.detail-meta').after(tagsContainer);
+        }
+        
+        tagsContainer.innerHTML = tags.map(tag => `
+            <span class="entry-tag-item" style="cursor: pointer;" onclick="filterByTag('${tag}')">${tag}</span>
+        `).join('');
+        
         modalDetail.classList.add('active');
     }
+
+    // 通过标签过滤
+    window.filterByTag = function(tag) {
+        closeDetailModal(); // 关闭弹窗
+        currentFilter.tag = tag; // 设置标签筛选
+        currentFilter.type = null; // 清除类型筛选，避免冲突
+        
+        // 切换到首页
+        switchView('view-home');
+        
+        // 加载列表 (会自动读取 currentFilter.tag)
+        loadEntries();
+        
+        // 确保筛选条显示
+        filterBar.classList.remove('hidden');
+        filterInfo.textContent = `正在查看标签: ${tag}`;
+    };
 
     function closeDetailModal() {
         modalDetail.classList.remove('active');
@@ -168,9 +214,65 @@ document.addEventListener('DOMContentLoaded', () => {
     function resetForm() {
         dreamInput.value = '';
         selectedMood = '';
+        currentTags = [];
+        renderTags();
+        tagInput.value = '';
         moodTags.forEach(tag => tag.classList.remove('selected'));
         document.querySelector('input[name="entry-type"][value="dream"]').checked = true;
     }
+
+    // Tag System Logic
+    if (tagInput) {
+        tagInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                addTag(e.target.value);
+            }
+        });
+        
+        // 兼容中文输入法结束
+        tagInput.addEventListener('compositionend', (e) => {
+             // 暂不处理，依靠用户按空格或回车确认
+        });
+    }
+
+    function addTag(text) {
+        const tag = text.trim();
+        if (tag && !currentTags.includes(tag)) {
+            currentTags.push(tag);
+            renderTags();
+            tagInput.value = '';
+        } else if (tag && currentTags.includes(tag)) {
+            tagInput.value = ''; // 重复则清空但不添加
+        }
+    }
+
+    function removeTag(tag) {
+        currentTags = currentTags.filter(t => t !== tag);
+        renderTags();
+    }
+
+    function renderTags() {
+        tagsContainer.innerHTML = currentTags.map(tag => `
+            <span class="tag-pill">
+                ${tag}
+                <span class="tag-remove" onclick="removeTag('${tag}')">×</span>
+            </span>
+        `).join('');
+        
+        // 绑定删除事件 (因为 innerHTML 重绘了)
+        document.querySelectorAll('.tag-remove').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                // removeTag via onclick attribute for simplicity here, 
+                // but better to bind via JS if complex. 
+                // Since we use onclick string in innerHTML, window scope is needed or...
+                // Actually, let's use the event listener approach below instead of onclick in HTML
+            });
+        });
+    }
+    
+    // Expose removeTag to window for inline onclick to work
+    window.removeTag = removeTag;
 
     // 情绪选择逻辑
     moodTags.forEach(tag => {
@@ -207,6 +309,71 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // 动画：记忆收集效果
+    function playMemoryCollectionAnimation(callback) {
+        // 1. 获取起点 (弹窗中心)
+        const modalRect = modalNewEntry.querySelector('.modal-content').getBoundingClientRect();
+        const startX = modalRect.left + modalRect.width / 2;
+        const startY = modalRect.top + modalRect.height / 2;
+
+        // 2. 获取终点 (统计图标)
+        // 假设统计图标是第二个 nav-item (data-target="view-stats")
+        const targetNav = document.querySelector('.nav-item[data-target="view-stats"] .icon');
+        if (!targetNav) {
+            callback();
+            return;
+        }
+        const targetRect = targetNav.getBoundingClientRect();
+        const targetX = targetRect.left + targetRect.width / 2;
+        const targetY = targetRect.top + targetRect.height / 2;
+
+        // 3. 创建光点
+        const particle = document.createElement('div');
+        particle.className = 'flying-particle';
+        document.body.appendChild(particle);
+
+        // 设置初始位置
+        particle.style.left = `${startX}px`;
+        particle.style.top = `${startY}px`;
+
+        // 4. 执行飞行动画
+        const animation = particle.animate([
+            {
+                transform: 'translate(-50%, -50%) scale(1)',
+                opacity: 1,
+                offset: 0
+            },
+            {
+                transform: 'translate(-50%, -50%) scale(1.5)', // 先稍微变大
+                opacity: 1,
+                offset: 0.2
+            },
+            {
+                left: `${targetX}px`,
+                top: `${targetY}px`,
+                transform: 'translate(-50%, -50%) scale(0.2)', // 飞向目标并缩小
+                opacity: 0.5,
+                offset: 1
+            }
+        ], {
+            duration: 800,
+            easing: 'cubic-bezier(0.22, 1, 0.36, 1)', // 类似于 ease-out
+            fill: 'forwards'
+        });
+
+        animation.onfinish = () => {
+            // 5. 动画结束：移除光点
+            particle.remove();
+            
+            // 6. 目标反馈
+            targetNav.classList.add('icon-bounce');
+            setTimeout(() => targetNav.classList.remove('icon-bounce'), 600);
+            
+            // 执行回调 (关闭弹窗等)
+            if (callback) callback();
+        };
+    }
+
     // 保存梦境逻辑
     saveBtn.addEventListener('click', () => {
         const text = dreamInput.value.trim();
@@ -218,17 +385,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 text: text,
                 type: type,
                 mood: selectedMood,
+                tags: currentTags, // 保存标签
                 date: new Date().toLocaleString('zh-CN', { hour12: false })
             };
+            
             saveEntry(entry);
-            closeModal(); // 关闭弹窗
-            loadEntries(); // 刷新列表
+            
+            // 播放记忆收集动画，然后再刷新 UI
+            playMemoryCollectionAnimation(() => {
+                closeModal(); // 关闭弹窗
+                loadEntries(); // 刷新列表
+                renderStats(); // 确保统计数据也更新
+            });
             
             // 可选：添加震动反馈 (如果设备支持)
             if (navigator.vibrate) {
                 navigator.vibrate(50);
             }
         } else {
+            // ... (错误提示)
             // 轻微摇晃输入框提示
             dreamInput.style.transform = 'translateX(5px)';
             setTimeout(() => dreamInput.style.transform = 'translateX(0)', 100);
@@ -262,9 +437,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function getMoodEmoji(mood) {
+        if (mood === 'scared') {
+            // 使用 Heroicons 'Sparkles' SVG 作为替代，带一点点神秘感
+            return `<span class="mood-icon-svg" style="color: #9B89B3;">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+                    <path fill-rule="evenodd" d="M9 4.5a.75.75 0 01.721.544l.813 2.846a3.75 3.75 0 002.576 2.576l2.846.813a.75.75 0 010 1.442l-2.846.813a3.75 3.75 0 00-2.576 2.576l-.813 2.846a.75.75 0 01-1.442 0l-.813-2.846a3.75 3.75 0 00-2.576-2.576l-2.846-.813a.75.75 0 010-1.442l2.846-.813a3.75 3.75 0 002.576-2.576L8.279 5.044A.75.75 0 019 4.5zM18 1.5a.75.75 0 01.728.568l.258 1.036c.236.94.97 1.674 1.91 1.91l1.036.258a.75.75 0 010 1.456l-1.036.258c-.94.236-1.674.97-1.91 1.91l-.258 1.036a.75.75 0 01-1.456 0l-.258-1.036a2.625 2.625 0 00-1.91-1.91l-1.036-.258a.75.75 0 010-1.456l1.036-.258a2.625 2.625 0 001.91-1.91l.258-1.036A.75.75 0 0118 1.5zM16.5 15a.75.75 0 01.712.513l.394 1.183c.15.447.5.799.948.948l1.183.395a.75.75 0 010 1.422l-1.183.395c-.447.15-.799.5-.948.948l-.395 1.183a.75.75 0 01-1.422 0l-.395-1.183a1.5 1.5 0 00-.948-.948l-1.183-.395a.75.75 0 010-1.422l1.183-.395c.447-.15.799-.5.948-.948l.395-1.183A.75.75 0 0116.5 15z" clip-rule="evenodd" />
+                </svg>
+            </span>`;
+        }
+
         const moodMap = {
             'happy': '😊', 'calm': '😌', 'sad': '😢', 
-            'anxious': '😰', 'excited': '🤩', 'confused': '😵', 'scared': '😱'
+            'anxious': '😰', 'excited': '🤩', 'confused': '😵'
+            // 'scared': handled above
         };
         return moodMap[mood] || '';
     }
@@ -286,11 +471,11 @@ document.addEventListener('DOMContentLoaded', () => {
         return typeMap[type] || '📝 记录';
     }
 
-    function loadEntries() {
+    function loadEntries(searchKeyword = '') {
         try {
             let entries = JSON.parse(localStorage.getItem('dream-entries') || '[]');
             
-            // 应用筛选
+            // 应用筛选 (Type & Tag)
             if (currentFilter.type) {
                 entries = entries.filter(e => e.type === currentFilter.type);
                 
@@ -298,13 +483,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 filterBar.classList.remove('hidden');
                 const typeName = getTypeLabel(currentFilter.type).split(' ')[1];
                 filterInfo.textContent = `正在查看: ${typeName}`;
+            } else if (currentFilter.tag) {
+                entries = entries.filter(e => (e.tags || []).includes(currentFilter.tag));
+                
+                // 更新筛选条 UI
+                filterBar.classList.remove('hidden');
+                filterInfo.textContent = `正在查看标签: ${currentFilter.tag}`;
             } else {
                 filterBar.classList.add('hidden');
             }
 
+            // 应用搜索
+            if (searchKeyword) {
+                entries = entries.filter(e => 
+                    (e.text || '').toLowerCase().includes(searchKeyword) || 
+                    (e.date || '').toLowerCase().includes(searchKeyword)
+                );
+            }
+
             if (entries.length === 0) {
-                if (currentFilter.type) {
+                if (searchKeyword) {
+                    entriesList.innerHTML = '<div class="empty-state">在这个时空里没有找到相关记忆...</div>';
+                } else if (currentFilter.type) {
                      entriesList.innerHTML = '<div class="empty-state">该分类下暂无记录</div>';
+                } else if (currentFilter.tag) {
+                     entriesList.innerHTML = '<div class="empty-state">该标签下暂无记录</div>';
                 } else {
                      entriesList.innerHTML = '<div class="empty-state">还没有记录，点击右下角“+”号开始记录你的第一个梦境吧！</div>';
                 }
@@ -318,6 +521,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // 兼容旧数据
                 const text = entry.text || '';
                 const date = entry.date || '';
+                // const tags = entry.tags || []; // 首页不再获取和显示标签
                 
                 // 处理长文本预览 (例如只显示前 80 个字符)
                 // 先转义，再截断可能会截断转义字符，所以先截断再转义 (但这不安全，因为截断可能正好在 tag 中间)
@@ -325,6 +529,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const safeText = escapeHtml(text);
                 const previewText = safeText.length > 80 ? safeText.substring(0, 80) + '...' : safeText;
                 
+                // 移除 tagsHtml 生成逻辑
+                /* const tagsHtml = tags.length > 0 ? `
+                    <div class="entry-tags">
+                        ${tags.map(tag => `<span class="entry-tag-item">${tag}</span>`).join('')}
+                    </div>
+                ` : ''; */
+
                 return `
                 <div class="dream-entry" data-mood="${entry.mood || ''}">
                     <button class="delete-entry-btn" data-id="${entry.id}" aria-label="删除">
@@ -401,8 +612,65 @@ document.addEventListener('DOMContentLoaded', () => {
         // 2. 情绪分布
         renderMoodChart(entries);
 
-        // 3. 类型分布
+        // 3. 情绪足迹 (热力图)
+        renderMoodHeatmap(entries);
+
+        // 4. 类型分布
         renderTypeChart(entries);
+    }
+
+    function renderMoodHeatmap(entries) {
+        const container = document.getElementById('heatmap-chart');
+        
+        // 准备心情颜色映射 (莫兰迪/马卡龙色盘)
+        const moodColors = {
+            'happy': '#FFD166',    // 温暖的夕阳黄
+            'excited': '#FFD166',  // 复用开心
+            'calm': '#06D6A0',     // 清透的海水绿
+            'sad': '#118AB2',      // 忧郁的深海蓝
+            'anxious': '#118AB2',  // 复用难过
+            'confused': '#EF476F', // 柔和的珊瑚粉
+            'scared': '#EF476F'    // 复用梦幻
+        };
+
+        // 处理数据：将 entries 映射为 date -> mood
+        const dateMoodMap = {};
+        entries.forEach(e => {
+            // 提取日期 YYYY/M/D 或 YYYY-MM-DD
+            try {
+                const dateKey = new Date(parseInt(e.id)).toDateString(); // 使用时间戳 ID 更准确
+                // 如果同一天有多条，优先保留第一个遍历到的 (entries 通常是倒序，所以是最新的一条)
+                // 或者保留情绪更强烈的？这里简单起见，取最新一条
+                if (!dateMoodMap[dateKey]) {
+                    dateMoodMap[dateKey] = e.mood;
+                }
+            } catch(err) {}
+        });
+
+        // 生成最近 30 天的日期数组 (倒序：从今天往前)
+        // 为了显示在 Grid 里符合直觉，我们通常按日历顺序显示，或者简单地展示过去30个格子
+        // 这里采用 GitHub 风格：从左上到右下，按时间顺序排列？
+        // 或者简单点：7列 (周日到周六)，展示最近 4-5 周
+        
+        const days = [];
+        const today = new Date();
+        // 生成过去 28 天 (4周) 的数据，方便 Grid 排列
+        for (let i = 27; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(today.getDate() - i);
+            days.push(d);
+        }
+
+        container.innerHTML = days.map(date => {
+            const dateKey = date.toDateString();
+            const mood = dateMoodMap[dateKey];
+            const color = mood ? moodColors[mood] : '';
+            const style = color ? `background-color: ${color};` : '';
+            const className = mood ? 'heatmap-day has-data' : 'heatmap-day';
+            const title = `${date.toLocaleDateString()} ${mood ? getMoodLabel(mood) : '无记录'}`;
+            
+            return `<div class="${className}" style="${style}" title="${title}"></div>`;
+        }).join('');
     }
 
     function calculateStreak(entries) {
@@ -532,18 +800,30 @@ document.addEventListener('DOMContentLoaded', () => {
     // Expose applyFilter to global scope so onclick works
     window.applyFilter = function(type) {
         currentFilter.type = type;
+        currentFilter.tag = null; // 切换类型时，清除标签筛选，避免冲突
         
         // Switch to home view
         switchView('view-home');
         
         // Ideally switchView handles tab active state, but we need to ensure data is reloaded
         // switchView calls loadEntries() if target is view-home
+        loadEntries(); // 手动调用一次确保状态更新
     };
 
     if (clearFilterBtn) {
         clearFilterBtn.addEventListener('click', () => {
             currentFilter.type = null;
+            currentFilter.tag = null; // 清除标签筛选
+            searchInput.value = ''; // 清除搜索框
             loadEntries();
+        });
+    }
+
+    // Search Logic
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const keyword = e.target.value.toLowerCase().trim();
+            loadEntries(keyword);
         });
     }
 
@@ -793,10 +1073,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (input === savedPin) {
                 closePrivacyModal();
                 loadEntries(); // 解锁成功，加载数据
+                renderFlashback(); // 加载时光胶囊
             } else {
                 showPinError();
             }
         } else if (pinState.mode === 'disable_verify') {
+            // ... (保持不变)
             if (input === savedPin) {
                 localStorage.removeItem('app-pin');
                 privacyStatusLabel.textContent = '未开启';
@@ -806,12 +1088,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 showPinError();
             }
         } else if (pinState.mode === 'set_new_1') {
+            // ... (保持不变)
             pinState.tempPin = input;
             pinState.currentInput = '';
             updatePinDisplay();
             pinState.mode = 'set_new_2';
             privacyTip.textContent = '请再次输入确认';
         } else if (pinState.mode === 'set_new_2') {
+            // ... (保持不变)
             if (input === pinState.tempPin) {
                 localStorage.setItem('app-pin', input);
                 privacyStatusLabel.textContent = '已开启';
@@ -823,6 +1107,86 @@ document.addEventListener('DOMContentLoaded', () => {
                 pinState.mode = 'set_new_1'; // Reset to first step
                 pinState.tempPin = '';
             }
+        }
+    }
+
+    // 时光胶囊逻辑
+    function renderFlashback() {
+        if (!flashbackCard) return;
+        
+        try {
+            const entries = JSON.parse(localStorage.getItem('dream-entries') || '[]');
+            
+            // 至少要有3条日记才显示
+            if (entries.length < 3) {
+                flashbackCard.classList.add('hidden');
+                return;
+            }
+
+            const today = new Date();
+            const todayMonth = today.getMonth() + 1;
+            const todayDate = today.getDate();
+
+            // 1. 查找“那年今日”
+            const anniversaryEntry = entries.find(e => {
+                const dateParts = e.date.split(' ')[0].split('/'); // 假设日期格式 YYYY/M/D
+                if (dateParts.length < 3) return false;
+                const m = parseInt(dateParts[1]);
+                const d = parseInt(dateParts[2]);
+                const y = parseInt(dateParts[0]);
+                return m === todayMonth && d === todayDate && y !== today.getFullYear();
+            });
+
+            let flashbackEntry = null;
+            let title = '';
+
+            if (anniversaryEntry) {
+                flashbackEntry = anniversaryEntry;
+                title = '那年今日的梦';
+            } else {
+                // 2. 随机漫游
+                // 排除今天的日记，只回顾过去
+                const pastEntries = entries.filter(e => {
+                    // 简单判断：只要不是今天写的
+                    // 这里可以更严谨地比较日期字符串
+                    return !e.date.startsWith(`${today.getFullYear()}/${todayMonth}/${todayDate}`);
+                });
+
+                if (pastEntries.length > 0) {
+                    const randomIndex = Math.floor(Math.random() * pastEntries.length);
+                    flashbackEntry = pastEntries[randomIndex];
+                    title = '潜意识的碎片';
+                }
+            }
+
+            if (flashbackEntry) {
+                // 渲染卡片
+                const titleEl = flashbackCard.querySelector('.flashback-title');
+                const textEl = flashbackCard.querySelector('.flashback-text');
+                
+                titleEl.textContent = title;
+                
+                // 处理文本预览：取前30个字
+                const fullText = flashbackEntry.text || '';
+                const preview = fullText.length > 30 ? fullText.substring(0, 30) + '...' : fullText;
+                const moodEmoji = getMoodEmoji(flashbackEntry.mood) || '✨';
+                
+                textEl.textContent = `${moodEmoji} ${flashbackEntry.date.split(' ')[0]} - ${preview}`;
+                
+                // 显示卡片
+                flashbackCard.classList.remove('hidden');
+                
+                // 绑定点击事件
+                flashbackCard.onclick = () => {
+                    openEntryDetail(flashbackEntry);
+                };
+            } else {
+                flashbackCard.classList.add('hidden');
+            }
+
+        } catch (e) {
+            console.error('Flashback render failed:', e);
+            flashbackCard.classList.add('hidden');
         }
     }
 

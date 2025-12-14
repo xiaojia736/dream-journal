@@ -8,9 +8,10 @@
     <!-- Google Fonts: Nunito & Playfair Display -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=Long+Cang&display=swap" rel="stylesheet">
     <!-- Open Source Font: LXGW WenKai Screen -->
     <link rel="stylesheet" href="https://npm.elemecdn.com/lxgw-wenkai-screen-web/style.css" media="print" onload="this.media='all'">
+    <link href="https://fonts.googleapis.com/css2?family=Long+Cang&display=swap" rel="stylesheet">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#E0C3FC">
     <link rel="icon" href="icons/icon-192x192.png">
@@ -25,7 +26,27 @@
     <main class="app-content">
         <!-- 视图：首页（日记列表） -->
         <div id="view-home" class="view-section active">
-            <!-- 筛选状态条 -->
+            <!-- 搜索框 -->
+            <div class="search-container">
+                <input type="text" id="search-input" placeholder="搜索梦境碎片..." autocomplete="off">
+                <span class="search-icon">🔍</span>
+            </div>
+
+            <!-- 时光胶囊 (Flashback Card) -->
+            <div id="flashback-card" class="flashback-card hidden">
+                <div class="flashback-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <div class="flashback-content">
+                    <div class="flashback-title"></div>
+                    <div class="flashback-text"></div>
+                </div>
+                <div class="flashback-arrow">›</div>
+            </div>
+
+            <!-- 筛选状态条 (保留但默认隐藏) -->
             <div id="filter-bar" class="filter-bar hidden">
                 <span id="filter-info">正在查看...</span>
                 <button id="clear-filter-btn" class="clear-filter-btn">查看全部</button>
@@ -80,6 +101,15 @@
                     <div id="mood-chart" class="mood-bubble-container">
                         <!-- 动态生成气泡 -->
                         <div class="empty-chart">暂无数据</div>
+                    </div>
+                </div>
+
+                <!-- 情绪足迹 - 热力图 -->
+                <div class="stats-module">
+                    <h3>情绪足迹</h3>
+                    <p class="module-desc">过去30天的心情轨迹</p>
+                    <div id="heatmap-chart" class="heatmap-container">
+                        <!-- 动态生成格子 -->
                     </div>
                 </div>
 
@@ -227,13 +257,31 @@
                         <span class="mood-tag" data-mood="anxious">😰 焦虑</span>
                         <span class="mood-tag" data-mood="excited">🤩 兴奋</span>
                         <span class="mood-tag" data-mood="confused">😵 困惑</span>
-                        <span class="mood-tag" data-mood="scared">😱 恐惧</span>
+                        <span class="mood-tag" data-mood="scared">
+                            <span class="mood-icon-svg" style="display: inline-flex; align-items: center; justify-content: center; width: 1.2em; height: 1.2em; margin-right: 4px; color: #9B89B3;">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%">
+                                    <path fill-rule="evenodd" d="M9 4.5a.75.75 0 01.721.544l.813 2.846a3.75 3.75 0 002.576 2.576l2.846.813a.75.75 0 010 1.442l-2.846.813a3.75 3.75 0 00-2.576 2.576l-.813 2.846a.75.75 0 01-1.442 0l-.813-2.846a3.75 3.75 0 00-2.576-2.576l-2.846-.813a.75.75 0 010-1.442l2.846-.813a3.75 3.75 0 002.576-2.576L8.279 5.044A.75.75 0 019 4.5zM18 1.5a.75.75 0 01.728.568l.258 1.036c.236.94.97 1.674 1.91 1.91l1.036.258a.75.75 0 010 1.456l-1.036.258c-.94.236-1.674.97-1.91 1.91l-.258 1.036a.75.75 0 01-1.456 0l-.258-1.036a2.625 2.625 0 00-1.91-1.91l-1.036-.258a.75.75 0 010-1.456l1.036-.258a2.625 2.625 0 001.91-1.91l.258-1.036A.75.75 0 0118 1.5zM16.5 15a.75.75 0 01.712.513l.394 1.183c.15.447.5.799.948.948l1.183.395a.75.75 0 010 1.422l-1.183.395c-.447.15-.799.5-.948.948l-.395 1.183a.75.75 0 01-1.422 0l-.395-1.183a1.5 1.5 0 00-.948-.948l-1.183-.395a.75.75 0 010-1.422l1.183-.395c.447-.15.799-.5.948-.948l.395-1.183A.75.75 0 0116.5 15z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                            恐惧
+                        </span>
                     </div>
                 </div>
 
                 <!-- 内容输入 -->
                 <textarea id="dream-input" placeholder="描述你今天的梦境... 
 时间、地点、人物、发生了什么？"></textarea>
+
+                <!-- 标签输入 -->
+                <div class="form-group">
+                    <label class="form-label">标签</label>
+                    <div class="tag-input-container">
+                        <div id="tags-container" class="tags-list">
+                            <!-- 动态生成的标签气泡 -->
+                        </div>
+                        <input type="text" id="tag-input" placeholder="输入标签按空格生成 (如: 噩梦)">
+                    </div>
+                </div>
                 
                 <button id="save-btn" class="primary-btn">保存记录</button>
             </div>
@@ -261,8 +309,8 @@
 
     <!-- 悬浮操作按钮 (FAB) -->
     <button id="fab-add" class="fab" aria-label="新建日记">
-        <svg viewBox="0 0 24 24" width="24" height="24" fill="white">
-            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
         </svg>
     </button>
 
