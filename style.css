@@ -265,16 +265,22 @@ body::before {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--primary-color);
-    background: rgba(255, 255, 255, 0.5);
+    color: rgba(107, 33, 168, 0.7); /* text-purple-800/70 深紫色，半透明 */
+    background: rgba(255, 255, 255, 0.4); /* bg-white/40 半透明白色 */
     border-radius: 50%;
-    box-shadow: 0 4px 10px rgba(161, 140, 209, 0.2);
+    /* 柔和的内发光和边框效果，像漂浮的气泡 */
+    box-shadow: 
+        inset 0 2px 8px rgba(107, 33, 168, 0.15), /* 内发光 */
+        0 2px 12px rgba(161, 140, 209, 0.2), /* 外阴影 */
+        0 0 0 1px rgba(107, 33, 168, 0.1); /* 柔和边框 */
     animation: float 3s ease-in-out infinite;
+    backdrop-filter: blur(4px); /* 毛玻璃效果 */
 }
 
 .flashback-icon svg {
     width: 24px;
     height: 24px;
+    filter: drop-shadow(0 1px 2px rgba(107, 33, 168, 0.2)); /* 图标本身的柔和阴影 */
 }
 
 @keyframes float {
@@ -337,6 +343,15 @@ body::before {
 
 [data-theme="dark"] .flashback-card::before {
     background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+}
+
+[data-theme="dark"] .flashback-icon {
+    background: rgba(255, 255, 255, 0.15); /* 暗色模式下更暗的半透明背景 */
+    color: rgba(196, 181, 253, 0.8); /* 暗色模式下使用更亮的紫色 */
+    box-shadow: 
+        inset 0 2px 8px rgba(196, 181, 253, 0.2),
+        0 2px 12px rgba(107, 33, 168, 0.3),
+        0 0 0 1px rgba(196, 181, 253, 0.15);
 }
 
 /* 筛选状态条 */
