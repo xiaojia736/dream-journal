@@ -209,6 +209,7 @@ body::before {
     transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     position: relative;
     overflow: hidden;
+    cursor: pointer; /* 增加手型光标 */
 }
 
 /* 呼吸光点 (替代原本的竖条) */

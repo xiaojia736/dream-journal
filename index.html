@@ -240,6 +240,25 @@
         </div>
     </div>
 
+    <!-- 详情查看弹出层 (Modal) -->
+    <div id="modal-entry-detail" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="detail-date">日期</h3>
+                <button id="close-detail-btn" class="close-btn">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="detail-meta">
+                    <span id="detail-mood" class="mood-tag selected" style="cursor: default;"></span>
+                    <span id="detail-type" class="meta-tag"></span>
+                </div>
+                <div class="detail-content">
+                    <p id="detail-text" style="white-space: pre-wrap; line-height: 1.8; font-size: 1.05rem;"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 悬浮操作按钮 (FAB) -->
     <button id="fab-add" class="fab" aria-label="新建日记">
         <svg viewBox="0 0 24 24" width="24" height="24" fill="white">

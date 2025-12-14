@@ -16,6 +16,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalNewEntry = document.getElementById('modal-new-entry');
     const closeModalBtn = document.getElementById('close-modal-btn');
 
+    // Detail Modal Elements
+    const modalDetail = document.getElementById('modal-entry-detail');
+    const closeDetailBtn = document.getElementById('close-detail-btn');
+    const detailDate = document.getElementById('detail-date');
+    const detailMood = document.getElementById('detail-mood');
+    const detailType = document.getElementById('detail-type');
+    const detailText = document.getElementById('detail-text');
+
     // Settings & Privacy Elements
     const darkModeToggle = document.getElementById('dark-mode-toggle');
     const btnPrivacyLock = document.getElementById('btn-privacy-lock');
@@ -71,6 +79,40 @@ document.addEventListener('DOMContentLoaded', () => {
             loadEntries(); // 没锁直接加载
         }
     }
+
+    // Detail Modal Logic
+    function openEntryDetail(entry) {
+        detailDate.textContent = entry.date;
+        detailText.textContent = entry.text;
+        
+        // 设置情绪标签
+        if (entry.mood) {
+            detailMood.textContent = getMoodEmoji(entry.mood) + ' ' + getMoodLabel(entry.mood);
+            detailMood.style.display = 'inline-flex';
+        } else {
+            detailMood.style.display = 'none';
+        }
+        
+        // 设置类型标签
+        detailType.textContent = getTypeLabel(entry.type);
+        
+        modalDetail.classList.add('active');
+    }
+
+    function closeDetailModal() {
+        modalDetail.classList.remove('active');
+    }
+
+    if (closeDetailBtn) {
+        closeDetailBtn.addEventListener('click', closeDetailModal);
+    }
+
+    // 点击遮罩层关闭详情
+    modalDetail.addEventListener('click', (e) => {
+        if (e.target === modalDetail) {
+            closeDetailModal();
+        }
+    });
 
     // 路由/视图切换逻辑
     function switchView(targetId) {
@@ -310,6 +352,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     e.stopPropagation(); // 防止触发卡片点击（如果有）
                     const id = btn.dataset.id;
                     deleteEntry(id);
+                });
+            });
+
+            // 绑定详情点击事件
+            document.querySelectorAll('.dream-entry').forEach((card, index) => {
+                card.addEventListener('click', () => {
+                    openEntryDetail(entries[index]);
                 });
             });
 
