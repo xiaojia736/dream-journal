@@ -621,19 +621,34 @@ document.addEventListener('DOMContentLoaded', () => {
     // Functions for Settings
     function exportData() {
         const data = localStorage.getItem('dream-entries');
-        if (!data) {
+        if (!data || JSON.parse(data).length === 0) {
             alert('没有数据可导出');
             return;
         }
-        const blob = new Blob([data], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `dream-journal-backup-${new Date().toISOString().slice(0,10)}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        
+        try {
+            // 格式化 JSON 字符串 (2 空格缩进)
+            const formattedData = JSON.stringify(JSON.parse(data), null, 2);
+            const blob = new Blob([formattedData], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            // 生成文件名: dream_diary_backup_YYYY-MM-DD.json
+            const date = new Date().toISOString().slice(0, 10);
+            const filename = `dream_diary_backup_${date}.json`;
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            alert('导出成功！请保存文件。');
+        } catch (e) {
+            console.error('Export failed:', e);
+            alert('导出失败，请重试');
+        }
     }
 
     function importData(e) {
@@ -644,31 +659,52 @@ document.addEventListener('DOMContentLoaded', () => {
         reader.onload = (event) => {
             try {
                 const data = JSON.parse(event.target.result);
-                if (Array.isArray(data)) {
-                    if (confirm(`准备导入 ${data.length} 条记录，這将覆盖现有记录吗？\n点击“确定”覆盖，点击“取消”追加。`)) {
-                         // 覆盖
-                         localStorage.setItem('dream-entries', JSON.stringify(data));
+                
+                // 简单的数据格式检查
+                if (!Array.isArray(data)) {
+                    alert('文件格式错误：备份文件必须是 JSON 数组');
+                    return;
+                }
+                
+                // 检查数组项是否看起来像日记 (可选)
+                if (data.length > 0 && (!data[0].id || !data[0].text)) {
+                    alert('文件内容格式不正确：找不到日记数据');
+                    return;
+                }
+
+                if (confirm(`准备导入 ${data.length} 条记录。\n\n点击“确定”：覆盖现有数据（清空旧数据）。\n点击“取消”：合并到现有数据（保留旧数据）。`)) {
+                     // 覆盖模式
+                     localStorage.setItem('dream-entries', JSON.stringify(data));
+                     alert('导入成功！旧数据已覆盖。');
+                } else {
+                    // 合并模式 (去重 id)
+                    const current = JSON.parse(localStorage.getItem('dream-entries') || '[]');
+                    const currentIds = new Set(current.map(c => c.id));
+                    
+                    // 找出新数据中 ID 不重复的项
+                    const newEntries = data.filter(d => !currentIds.has(d.id));
+                    
+                    if (newEntries.length === 0) {
+                        alert('导入完成：没有发现新记录 (所有记录已存在)。');
                     } else {
-                        // 追加 (去重 id)
-                        const current = JSON.parse(localStorage.getItem('dream-entries') || '[]');
-                        const currentIds = new Set(current.map(c => c.id));
-                        const newEntries = data.filter(d => !currentIds.has(d.id));
+                        // 合并并按 ID (时间戳) 倒序排列
                         const merged = [...newEntries, ...current].sort((a,b) => b.id - a.id);
                         localStorage.setItem('dream-entries', JSON.stringify(merged));
-                        alert(`已追加 ${newEntries.length} 条新记录`);
+                        alert(`导入成功！已追加 ${newEntries.length} 条新记录。`);
                     }
-                    loadEntries();
-                    renderStats(); // 刷新统计
-                    alert('导入成功！');
-                } else {
-                    alert('文件格式错误：必须是 JSON 数组');
                 }
+                
+                // 重新加载界面
+                loadEntries();
+                renderStats(); 
+                
             } catch (err) {
-                console.error(err);
-                alert('导入失败：文件损坏或格式错误');
+                console.error('Import error:', err);
+                alert('导入失败：文件损坏或 JSON 格式错误');
+            } finally {
+                // 重置 input，允许重复选择同一个文件
+                importInput.value = '';
             }
-            // Reset input
-            importInput.value = '';
         };
         reader.readAsText(file);
     }
