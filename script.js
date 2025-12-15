@@ -1121,15 +1121,44 @@ document.addEventListener('DOMContentLoaded', () => {
             const today = new Date();
             const todayMonth = today.getMonth() + 1;
             const todayDate = today.getDate();
+            const todayYear = today.getFullYear();
+            const todayDateStr = `${todayYear}/${todayMonth}/${todayDate}`;
 
-            // 1. 查找“那年今日”
+            // 辅助函数：解析日期字符串
+            function parseEntryDate(dateStr) {
+                try {
+                    // 尝试解析日期字符串（格式可能是 "2024/12/12 14:30:00" 或类似）
+                    const datePart = dateStr.split(' ')[0]; // 获取日期部分
+                    const parts = datePart.split('/');
+                    if (parts.length >= 3) {
+                        return {
+                            year: parseInt(parts[0]),
+                            month: parseInt(parts[1]),
+                            date: parseInt(parts[2])
+                        };
+                    }
+                    // 如果格式不对，尝试使用 Date 对象解析
+                    const dateObj = new Date(dateStr);
+                    if (!isNaN(dateObj.getTime())) {
+                        return {
+                            year: dateObj.getFullYear(),
+                            month: dateObj.getMonth() + 1,
+                            date: dateObj.getDate()
+                        };
+                    }
+                } catch (e) {
+                    console.warn('Failed to parse date:', dateStr, e);
+                }
+                return null;
+            }
+
+            // 1. 查找"那年今日"（同月同日但不同年）
             const anniversaryEntry = entries.find(e => {
-                const dateParts = e.date.split(' ')[0].split('/'); // 假设日期格式 YYYY/M/D
-                if (dateParts.length < 3) return false;
-                const m = parseInt(dateParts[1]);
-                const d = parseInt(dateParts[2]);
-                const y = parseInt(dateParts[0]);
-                return m === todayMonth && d === todayDate && y !== today.getFullYear();
+                const parsed = parseEntryDate(e.date);
+                if (!parsed) return false;
+                return parsed.month === todayMonth && 
+                       parsed.date === todayDate && 
+                       parsed.year !== todayYear;
             });
 
             let flashbackEntry = null;
@@ -1139,12 +1168,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 flashbackEntry = anniversaryEntry;
                 title = '那年今日的梦';
             } else {
-                // 2. 随机漫游
-                // 排除今天的日记，只回顾过去
+                // 2. 随机漫游：排除今天的日记，只回顾过去
                 const pastEntries = entries.filter(e => {
-                    // 简单判断：只要不是今天写的
-                    // 这里可以更严谨地比较日期字符串
-                    return !e.date.startsWith(`${today.getFullYear()}/${todayMonth}/${todayDate}`);
+                    const parsed = parseEntryDate(e.date);
+                    if (!parsed) return false;
+                    // 排除今天和未来的日期
+                    const entryDateStr = `${parsed.year}/${parsed.month}/${parsed.date}`;
+                    return entryDateStr !== todayDateStr;
                 });
 
                 if (pastEntries.length > 0) {
