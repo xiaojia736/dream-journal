@@ -924,34 +924,77 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Functions for Settings
     function exportData() {
-        const data = localStorage.getItem('dream-entries');
-        if (!data || JSON.parse(data).length === 0) {
-            alert('没有数据可导出');
+        console.log('=== 开始执行导出流程 ===');
+        
+        // 1. 数据获取与验证
+        const key = 'dream-entries'; // 确认使用的 Key
+        const rawData = localStorage.getItem(key);
+        
+        console.log(`正在读取 localStorage key: "${key}"`);
+        console.log('获取到的原始数据类型:', typeof rawData);
+        if (rawData) {
+            console.log('获取到的原始数据长度:', rawData.length);
+            console.log('获取到的原始数据(前100字符):', rawData.substring(0, 100));
+        } else {
+            console.log('获取到的原始数据: null');
+        }
+
+        // 判空逻辑
+        if (!rawData) {
+            console.warn('导出失败：无法从 localStorage 获取数据');
+            alert('没有可导出的日记！(数据为空)');
             return;
         }
-        
+
+        let parsedData;
         try {
-            // 格式化 JSON 字符串 (2 空格缩进)
-            const formattedData = JSON.stringify(JSON.parse(data), null, 2);
-            const blob = new Blob([formattedData], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
+            parsedData = JSON.parse(rawData);
+            if (!Array.isArray(parsedData) || parsedData.length === 0) {
+                console.warn('导出中止：数据解析后为空数组');
+                alert('没有可导出的日记！(列表为空)');
+                return;
+            }
+            console.log('数据校验通过，包含条目数:', parsedData.length);
+        } catch (e) {
+            console.error('JSON 解析错误:', e);
+            alert('导出失败：数据格式错误');
+            return;
+        }
+
+        try {
+            // 2. 生成 Data URI (关键兼容性修改)
+            // 使用 unescape + encodeURIComponent 解决中文乱码问题
+            const jsonString = JSON.stringify(parsedData, null, 2);
+            const base64Content = btoa(unescape(encodeURIComponent(jsonString)));
+            const dataUri = 'data:application/json;base64,' + base64Content;
             
-            // 生成文件名: dream_diary_backup_YYYY-MM-DD.json
-            const date = new Date().toISOString().slice(0, 10);
-            const filename = `dream_diary_backup_${date}.json`;
+            console.log('生成的 Data URI 长度:', dataUri.length);
+            console.log('生成的 Data URI 前100个字符:', dataUri.substring(0, 100));
+
+            // 3. 触发下载
+            // 生成文件名: dream_diary_backup_YYYYMMDD_HHMMSS.json
+            const now = new Date();
+            const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+            const timeStr = now.toTimeString().slice(0, 8).replace(/:/g, '');
+            const filename = `dream_diary_backup_${dateStr}_${timeStr}.json`;
             
+            console.log('准备下载文件:', filename);
+
             const a = document.createElement('a');
-            a.href = url;
+            a.href = dataUri;
             a.download = filename;
+            a.style.display = 'none'; // 隐藏元素
+            
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-            URL.revokeObjectURL(url);
             
-            alert('导出成功！请保存文件。');
+            console.log('=== 导出操作已触发 ===');
+            // 考虑到部分安卓 WebView 下载后可能不会自动提示，给个 Alert
+            // alert('已触发下载，请检查下载管理器');
         } catch (e) {
-            console.error('Export failed:', e);
-            alert('导出失败，请重试');
+            console.error('导出过程中发生异常:', e);
+            alert('导出发生错误: ' + e.message);
         }
     }
 
