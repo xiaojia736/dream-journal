@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Tag System Elements
     const tagInput = document.getElementById('tag-input');
+    const addTagBtn = document.getElementById('add-tag-btn');
     const tagsContainer = document.getElementById('tags-container');
     let currentTags = [];
 
@@ -223,10 +224,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Tag System Logic
     if (tagInput) {
+        // Keydown: 处理回车键和PC端的空格键
         tagInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
+            if (e.key === 'Enter') {
                 e.preventDefault();
                 addTag(e.target.value);
+            }
+            // PC端保留空格键生成习惯，但移动端软键盘可能不触发此事件或无法preventDefault
+            if (e.key === ' ') {
+                e.preventDefault();
+                addTag(e.target.value);
+            }
+        });
+
+        // Input: 移动端兼容性核心逻辑 - 实时监测输入内容
+        tagInput.addEventListener('input', (e) => {
+            const val = e.target.value;
+            if (!val) return;
+
+            const lastChar = val.slice(-1);
+            // 检测分隔符：空格、中文逗号、英文逗号
+            if ([' ', '，', ','].includes(lastChar)) {
+                // 截取分隔符前面的内容作为标签
+                addTag(val.slice(0, -1));
             }
         });
         
@@ -234,6 +254,15 @@ document.addEventListener('DOMContentLoaded', () => {
         tagInput.addEventListener('compositionend', (e) => {
              // 暂不处理，依靠用户按空格或回车确认
         });
+
+        // 移动端/鼠标用户辅助按钮：点击(+)添加标签
+        if (addTagBtn) {
+            addTagBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                addTag(tagInput.value);
+                tagInput.focus();
+            });
+        }
     }
 
     function addTag(text) {

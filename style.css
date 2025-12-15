@@ -645,6 +645,51 @@ body::before {
     font-family: 'LXGW WenKai Screen', sans-serif;
 }
 
+/* 添加标签按钮 */
+.add-tag-btn {
+    background: transparent;
+    border: none;
+    color: var(--primary-dark);
+    cursor: pointer;
+    padding: 0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    margin-right: 4px;
+}
+
+.add-tag-btn:hover {
+    background: rgba(155, 158, 206, 0.2);
+    transform: scale(1.1);
+    color: var(--primary-color);
+}
+
+.add-tag-btn:active {
+    transform: scale(0.9);
+}
+
+.add-tag-btn svg {
+    width: 20px;
+    height: 20px;
+    /* 使用 fill 还是 stroke 取决于 svg path */
+    /* 上面的 svg 是 fill="currentColor" */
+}
+
+/* 深色模式适配 */
+[data-theme="dark"] .add-tag-btn {
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] .add-tag-btn:hover {
+    color: var(--primary-color);
+    background: rgba(255, 255, 255, 0.1);
+}
+
 /* 标签气泡样式 - Glassmorphism & Pill Shape */
 .tag-pill {
     background: rgba(255, 255, 255, 0.5);
