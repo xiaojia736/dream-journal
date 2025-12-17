@@ -23,7 +23,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const detailMood = document.getElementById('detail-mood');
     const detailType = document.getElementById('detail-type');
     const detailText = document.getElementById('detail-text');
+    const detailTagsContainer = document.getElementById('detail-tags');
+
+    // Edit Mode Elements
+    const editEntryBtn = document.getElementById('edit-entry-btn');
+    const detailViewContainer = document.getElementById('detail-view-container');
+    const detailEditContainer = document.getElementById('detail-edit-container');
+    const saveEditBtn = document.getElementById('save-edit-btn');
+    const cancelEditBtn = document.getElementById('cancel-edit-btn');
     
+    // Edit Inputs
+    const editDateInput = document.getElementById('edit-date');
+    const editInput = document.getElementById('edit-input');
+    const editMoodSelector = document.getElementById('edit-mood-selector');
+    const editTagInput = document.getElementById('edit-tag-input');
+    const editTagsList = document.getElementById('edit-tags-list');
+    const editAddTagBtn = document.getElementById('edit-add-tag-btn');
+    
+    let currentDetailEntryId = null; // Store currently viewed entry ID
+    let isEditing = false;
+    let editTags = []; // Tags for edit mode
+
     // Tag System Elements
     const tagInput = document.getElementById('tag-input');
     const addTagBtn = document.getElementById('add-tag-btn');
@@ -96,6 +116,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Detail Modal Logic
     function openEntryDetail(entry) {
+        currentDetailEntryId = entry.id; // Store ID for editing
+        isEditing = false;
+        
+        // Reset View Mode
+        detailViewContainer.classList.remove('hidden');
+        detailEditContainer.classList.add('hidden');
+        editDateInput.classList.add('hidden');
+        detailDate.classList.remove('hidden');
+        editEntryBtn.style.display = 'flex';
+
         detailDate.textContent = entry.date;
         detailText.textContent = entry.text;
         
@@ -112,21 +142,237 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // 渲染详情页标签
         const tags = entry.tags || [];
-        let tagsContainer = document.getElementById('detail-tags-container');
-        if (!tagsContainer) {
-            tagsContainer = document.createElement('div');
-            tagsContainer.id = 'detail-tags-container';
-            tagsContainer.className = 'entry-tags';
-            tagsContainer.style.marginTop = '1rem';
-            // 插入到 modal-body 的开头或结尾? 放在 meta 下面比较好
-            document.querySelector('.detail-meta').after(tagsContainer);
+        // Use the container defined in HTML now (detailTagsContainer is #detail-tags)
+        // Note: In HTML edit we changed id="detail-tags" class="entry-tags" inside detail-view-container
+        if (detailTagsContainer) {
+            detailTagsContainer.innerHTML = tags.map(tag => `
+                <span class="entry-tag-item" style="cursor: pointer;" onclick="filterByTag('${tag}')">${tag}</span>
+            `).join('');
         }
         
-        tagsContainer.innerHTML = tags.map(tag => `
-            <span class="entry-tag-item" style="cursor: pointer;" onclick="filterByTag('${tag}')">${tag}</span>
-        `).join('');
-        
         modalDetail.classList.add('active');
+    }
+
+    // Edit Mode Functions
+    if (editEntryBtn) {
+        editEntryBtn.addEventListener('click', () => {
+            enterEditMode();
+        });
+    }
+
+    if (cancelEditBtn) {
+        cancelEditBtn.addEventListener('click', () => {
+            if (confirm('确定要放弃修改吗？')) {
+                exitEditMode();
+            }
+        });
+    }
+
+    if (saveEditBtn) {
+        saveEditBtn.addEventListener('click', () => {
+            saveEntryChanges();
+        });
+    }
+
+    // Edit Tags Logic
+    if (editAddTagBtn) {
+        editAddTagBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            addEditTag(editTagInput.value);
+            editTagInput.focus();
+        });
+    }
+
+    if (editTagInput) {
+        editTagInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addEditTag(e.target.value);
+            }
+        });
+        
+        editTagInput.addEventListener('input', (e) => {
+            const val = e.target.value;
+            if (!val) return;
+            const lastChar = val.slice(-1);
+            if ([' ', '，', ','].includes(lastChar)) {
+                addEditTag(val.slice(0, -1));
+            }
+        });
+    }
+
+    function addEditTag(text) {
+        const tag = text.trim();
+        if (tag && !editTags.includes(tag)) {
+            editTags.push(tag);
+            renderEditTags();
+            editTagInput.value = '';
+        } else if (tag && editTags.includes(tag)) {
+            editTagInput.value = '';
+        }
+    }
+
+    function removeEditTag(tag) {
+        editTags = editTags.filter(t => t !== tag);
+        renderEditTags();
+    }
+    
+    // Expose for onclick
+    window.removeEditTag = removeEditTag;
+
+    function renderEditTags() {
+        editTagsList.innerHTML = editTags.map(tag => `
+            <span class="tag-pill">
+                ${tag}
+                <span class="tag-remove" onclick="removeEditTag('${tag}')">×</span>
+            </span>
+        `).join('');
+    }
+
+    function enterEditMode() {
+        isEditing = true;
+        const entries = JSON.parse(localStorage.getItem('dream-entries') || '[]');
+        const entry = entries.find(e => e.id.toString() === currentDetailEntryId.toString());
+        
+        if (!entry) {
+            alert('找不到该日记数据');
+            modalDetail.classList.remove('active');
+            return;
+        }
+
+        // 1. Populate Inputs
+        // Date: Convert locale string/timestamp to YYYY-MM-DDTHH:mm for datetime-local
+        try {
+            const d = new Date(parseInt(entry.id)); // Use ID as timestamp source of truth
+            // Format to local ISO-like string
+            const offset = d.getTimezoneOffset() * 60000;
+            const localISOTime = (new Date(d - offset)).toISOString().slice(0, 16);
+            editDateInput.value = localISOTime;
+        } catch (e) {
+            console.error('Date parsing error', e);
+        }
+
+        editInput.value = entry.text;
+        
+        // Type
+        const typeRadios = document.querySelectorAll('input[name="edit-entry-type"]');
+        typeRadios.forEach(r => {
+            if (r.value === entry.type) r.checked = true;
+        });
+
+        // Mood - Clone structure from main form if empty
+        if (!editMoodSelector.hasChildNodes()) {
+             // Clone the mood tags from the main selector for consistency
+             const mainMoodSelector = document.getElementById('mood-selector');
+             if (mainMoodSelector) {
+                 editMoodSelector.innerHTML = mainMoodSelector.innerHTML;
+                 // Re-bind click events for selection
+                 editMoodSelector.querySelectorAll('.mood-tag').forEach(tag => {
+                     tag.addEventListener('click', () => {
+                        editMoodSelector.querySelectorAll('.mood-tag').forEach(t => t.classList.remove('selected'));
+                        tag.classList.add('selected');
+                     });
+                 });
+             }
+        }
+        
+        // Set Selected Mood
+        editMoodSelector.querySelectorAll('.mood-tag').forEach(tag => {
+            tag.classList.remove('selected');
+            if (tag.dataset.mood === entry.mood) {
+                tag.classList.add('selected');
+            }
+        });
+
+        // Tags
+        editTags = [...(entry.tags || [])];
+        renderEditTags();
+
+        // 2. Toggle UI
+        detailViewContainer.classList.add('hidden');
+        detailEditContainer.classList.remove('hidden');
+        
+        detailDate.classList.add('hidden');
+        editDateInput.classList.remove('hidden');
+        
+        editEntryBtn.style.display = 'none'; // Hide edit button while editing
+    }
+
+    function exitEditMode() {
+        isEditing = false;
+        detailViewContainer.classList.remove('hidden');
+        detailEditContainer.classList.add('hidden');
+        
+        editDateInput.classList.add('hidden');
+        detailDate.classList.remove('hidden');
+        
+        editEntryBtn.style.display = 'flex';
+    }
+
+    function saveEntryChanges() {
+        const newText = editInput.value.trim();
+        if (!newText) {
+            alert('内容不能为空');
+            return;
+        }
+
+        const entries = JSON.parse(localStorage.getItem('dream-entries') || '[]');
+        const entryIndex = entries.findIndex(e => e.id.toString() === currentDetailEntryId.toString());
+        
+        if (entryIndex === -1) {
+            alert('保存失败：原记录不存在');
+            return;
+        }
+
+        // Get Values
+        const newType = document.querySelector('input[name="edit-entry-type"]:checked').value;
+        
+        let newMood = '';
+        const selectedMoodTag = editMoodSelector.querySelector('.mood-tag.selected');
+        if (selectedMoodTag) {
+            newMood = selectedMoodTag.dataset.mood;
+        }
+
+        // Date Handling
+        const newDateVal = editDateInput.value; // YYYY-MM-DDTHH:mm
+        let newTimestamp = entries[entryIndex].id; // Default keep ID
+        let newDateStr = entries[entryIndex].date;
+
+        if (newDateVal) {
+            const newDateObj = new Date(newDateVal);
+            // We usually keep the ID (creation time) same to preserve identity, 
+            // but update the display date and sorting timestamp.
+            // If we update ID, it might break references? Let's keep ID constant but update a 'timestamp' field used for sorting.
+            // Current app uses 'id' as timestamp often.
+            // Let's update the 'timestamp' field and 'date' string.
+            newTimestamp = newDateObj.getTime();
+            newDateStr = newDateObj.toLocaleString('zh-CN', { hour12: false });
+        }
+
+        // Update Object
+        entries[entryIndex] = {
+            ...entries[entryIndex],
+            text: newText,
+            type: newType,
+            mood: newMood,
+            tags: [...editTags],
+            date: newDateStr,
+            timestamp: newTimestamp // Update sorting time
+        };
+
+        // Save
+        localStorage.setItem('dream-entries', JSON.stringify(entries));
+
+        // Refresh UI
+        loadEntries(); // Refresh main list
+        renderStats(); // Refresh stats
+        
+        // Refresh Current Modal View
+        openEntryDetail(entries[entryIndex]);
+        
+        // Alert & Exit
+        // alert('修改已保存'); // Optional
+        exitEditMode();
     }
 
     // 通过标签过滤
@@ -147,7 +393,14 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     function closeDetailModal() {
+        if (isEditing) {
+            if (!confirm('修改未保存，确定要关闭吗？')) {
+                return;
+            }
+            exitEditMode(); // Reset state
+        }
         modalDetail.classList.remove('active');
+        document.body.style.overflow = '';
     }
 
     if (closeDetailBtn) {

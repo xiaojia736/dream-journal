@@ -339,16 +339,76 @@
     <div id="modal-entry-detail" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 id="detail-date">日期</h3>
-                <button id="close-detail-btn" class="close-btn">×</button>
+                <div class="header-actions">
+                    <h3 id="detail-date" class="view-mode-el">日期</h3>
+                    <input type="datetime-local" id="edit-date" class="edit-mode-el hidden" style="border: 1px solid var(--border-color); background: var(--card-bg); padding: 4px; border-radius: 8px; font-family: inherit;">
+                </div>
+                <div class="header-buttons" style="display: flex; gap: 10px; align-items: center;">
+                    <button id="edit-entry-btn" class="icon-btn edit-btn" aria-label="编辑">
+                        ✏️
+                    </button>
+                    <button id="close-detail-btn" class="close-btn">×</button>
+                </div>
             </div>
             <div class="modal-body">
-                <div class="detail-meta">
-                    <span id="detail-mood" class="mood-tag selected" style="cursor: default;"></span>
-                    <span id="detail-type" class="meta-tag"></span>
+                <!-- 浏览模式容器 -->
+                <div id="detail-view-container" class="view-mode-el">
+                    <div class="detail-meta">
+                        <span id="detail-mood" class="mood-tag selected" style="cursor: default;"></span>
+                        <span id="detail-type" class="meta-tag"></span>
+                        <div id="detail-tags" class="entry-tags"></div>
+                    </div>
+                    <div class="detail-content">
+                        <p id="detail-text" style="white-space: pre-wrap; line-height: 1.8; font-size: 1.05rem;"></p>
+                    </div>
                 </div>
-                <div class="detail-content">
-                    <p id="detail-text" style="white-space: pre-wrap; line-height: 1.8; font-size: 1.05rem;"></p>
+
+                <!-- 编辑模式容器 -->
+                <div id="detail-edit-container" class="edit-mode-el hidden" style="display: flex; flex-direction: column; gap: 1rem; flex: 1;">
+                    <!-- 类型选择 -->
+                    <div class="form-group">
+                        <label class="form-label">类型</label>
+                        <div class="type-selector">
+                            <label class="type-option">
+                                <input type="radio" name="edit-entry-type" value="dream">
+                                <span>🌙 梦境</span>
+                            </label>
+                            <label class="type-option">
+                                <input type="radio" name="edit-entry-type" value="diary">
+                                <span>📖 日记</span>
+                            </label>
+                            <label class="type-option">
+                                <input type="radio" name="edit-entry-type" value="os">
+                                <span>💭 内心OS</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 情绪选择 (动态生成或静态) -->
+                    <div class="form-group">
+                        <label class="form-label">情绪</label>
+                        <div id="edit-mood-selector" class="mood-selector">
+                           <!-- JS 将复制现有的 mood-selector 内容到这里 -->
+                        </div>
+                    </div>
+
+                    <!-- 正文编辑 -->
+                    <textarea id="edit-input" style="flex: 1; min-height: 150px; background: rgba(255,255,255,0.5); border: 1px solid var(--glass-border); border-radius: 12px; padding: 1rem; font-family: inherit; font-size: 1rem; outline: none; resize: none;"></textarea>
+
+                    <!-- 标签编辑 -->
+                    <div class="form-group">
+                        <label class="form-label">标签</label>
+                        <div class="tag-input-container">
+                            <div id="edit-tags-list" class="tags-list"></div>
+                            <input type="text" id="edit-tag-input" placeholder="输入标签按空格或逗号生成">
+                            <button id="edit-add-tag-btn" type="button" class="add-tag-btn">+</button>
+                        </div>
+                    </div>
+
+                    <div class="edit-actions" style="display: flex; gap: 1rem; margin-top: auto;">
+                        <button id="cancel-edit-btn" class="secondary-btn" style="flex: 1; padding: 10px; border-radius: 20px; border: 1px solid var(--border-color); background: transparent; cursor: pointer;">取消</button>
+                        <button id="save-edit-btn" class="primary-btn" style="flex: 1; padding: 10px; border-radius: 20px; border: none; cursor: pointer; color: white;">保存修改</button>
+                    </div>
                 </div>
             </div>
         </div>

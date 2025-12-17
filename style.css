@@ -963,9 +963,46 @@ body::before {
     padding-top: 70px;
 }
 
-/* 隐藏 */
+/* 编辑按钮样式 */
+.edit-btn {
+    background: transparent;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 50%;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+}
+
+.edit-btn:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--primary-dark);
+}
+
+/* 隐藏类 */
 .hidden {
     display: none !important;
+}
+
+/* 编辑模式下的文本框样式微调 */
+#detail-edit-container textarea:focus {
+    border-color: var(--primary-color);
+    background: rgba(255, 255, 255, 0.8);
+}
+
+/* 深色模式适配 */
+[data-theme="dark"] #detail-edit-container textarea {
+    background: rgba(30, 32, 48, 0.5);
+    color: var(--text-main);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] #detail-edit-container textarea:focus {
+    background: rgba(30, 32, 48, 0.8);
 }
 
 /* 模态弹窗/弹出层样式 */
