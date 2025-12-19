@@ -1175,6 +1175,25 @@ body::before {
     box-shadow: 0 2px 8px rgba(255, 183, 178, 0.3);
 }
 
+.mood-tag.add-btn {
+    padding: 0;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    color: var(--primary-dark);
+    font-weight: bold;
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.mood-tag.add-btn:hover {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
 /* 调整编辑器在模态框中的样式 */
 .modal-body #dream-input {
     min-height: 150px;

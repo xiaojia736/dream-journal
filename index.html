@@ -307,6 +307,9 @@
                             </span>
                             恐惧
                         </span>
+                        <button id="btn-add-mood" class="mood-tag add-btn" type="button" aria-label="添加情绪">
+                            <span style="font-size: 1.2em; line-height: 1;">+</span>
+                        </button>
                     </div>
                 </div>
 
@@ -409,6 +412,25 @@
                         <button id="cancel-edit-btn" class="secondary-btn" style="flex: 1; padding: 10px; border-radius: 20px; border: 1px solid var(--border-color); background: transparent; cursor: pointer;">取消</button>
                         <button id="save-edit-btn" class="primary-btn" style="flex: 1; padding: 10px; border-radius: 20px; border: none; cursor: pointer; color: white;">保存修改</button>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加新情绪弹出层 (Modal) -->
+    <div id="modal-add-mood" class="modal-overlay">
+        <div class="modal-content" style="height: auto; min-height: 200px; max-height: 400px; justify-content: center;">
+            <div class="modal-header">
+                <h3>添加新情绪</h3>
+                <button id="close-add-mood-btn" class="close-btn">×</button>
+            </div>
+            <div class="modal-body" style="flex: none;">
+                <div class="form-group">
+                    <input type="text" id="new-mood-input" placeholder="输入情绪名称 (如: 疲惫)" class="form-input" style="padding: 10px; border-radius: 12px; border: 1px solid var(--border-color); font-family: inherit;">
+                </div>
+                <div class="form-actions" style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button id="cancel-add-mood-btn" class="secondary-btn" style="flex: 1; padding: 10px; border-radius: 20px; border: 1px solid var(--border-color); background: transparent; cursor: pointer;">取消</button>
+                    <button id="confirm-add-mood-btn" class="primary-btn" style="flex: 1; margin-top: 0;">确认</button>
                 </div>
             </div>
         </div>

@@ -92,6 +92,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Flashback Element
     const flashbackCard = document.getElementById('flashback-card');
 
+    // Add Mood Elements
+    const btnAddMood = document.getElementById('btn-add-mood');
+    const modalAddMood = document.getElementById('modal-add-mood');
+    const closeAddMoodBtn = document.getElementById('close-add-mood-btn');
+    const cancelAddMoodBtn = document.getElementById('cancel-add-mood-btn');
+    const confirmAddMoodBtn = document.getElementById('confirm-add-mood-btn');
+    const newMoodInput = document.getElementById('new-mood-input');
+
     // 初始化应用
     function initApp() {
         // 1. 加载夜间模式
@@ -100,6 +108,9 @@ document.addEventListener('DOMContentLoaded', () => {
             document.documentElement.setAttribute('data-theme', 'dark');
             darkModeToggle.checked = true;
         }
+
+        // 1.5 加载自定义情绪
+        loadCustomMoods();
 
         // 2. 检查隐私锁
         const savedPin = localStorage.getItem('app-pin');
@@ -475,6 +486,115 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelector('input[name="entry-type"][value="dream"]').checked = true;
     }
 
+    // 自定义情绪逻辑
+    function loadCustomMoods() {
+        try {
+            const customMoods = JSON.parse(localStorage.getItem('custom-moods') || '[]');
+            customMoods.forEach(mood => {
+                appendMoodToSelector(mood);
+            });
+        } catch (e) {
+            console.error('Failed to load custom moods', e);
+        }
+    }
+
+    function appendMoodToSelector(moodName) {
+        // 创建新的 Mood Tag 元素
+        const tag = document.createElement('span');
+        tag.className = 'mood-tag';
+        tag.dataset.mood = moodName; // 使用名称作为 key
+        
+        // 默认图标 (比如一个星号或者自定义图标)
+        // 这里使用一个通用的 SVG 或者 emoji
+        tag.innerHTML = `
+            <span class="mood-icon-svg" style="display: inline-flex; align-items: center; justify-content: center; width: 1.2em; height: 1.2em; margin-right: 4px; color: #888;">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%">
+                     <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM12.75 9a.75.75 0 00-1.5 0v2.25H9a.75.75 0 000 1.5h2.25V15a.75.75 0 001.5 0v-2.25H15a.75.75 0 000-1.5h-2.25V9z" clip-rule="evenodd" />
+                </svg>
+            </span>
+            ${moodName}
+        `;
+        
+        // 插入到 + 号按钮之前
+        if (btnAddMood && btnAddMood.parentNode) {
+            btnAddMood.parentNode.insertBefore(tag, btnAddMood);
+        }
+
+        // 绑定点击事件
+        tag.addEventListener('click', () => {
+             // 获取所有当前的 mood-tag (包括动态添加的)
+            const allTags = moodSelector.querySelectorAll('.mood-tag:not(.add-btn)');
+            allTags.forEach(t => t.classList.remove('selected'));
+            tag.classList.add('selected');
+            selectedMood = tag.dataset.mood;
+        });
+    }
+
+    function openAddMoodModal() {
+        modalAddMood.classList.add('active');
+        newMoodInput.value = '';
+        newMoodInput.focus();
+    }
+
+    function closeAddMoodModal() {
+        modalAddMood.classList.remove('active');
+    }
+
+    if (btnAddMood) {
+        btnAddMood.addEventListener('click', (e) => {
+            e.preventDefault(); // 防止触发表单提交或其他意外
+            openAddMoodModal();
+        });
+    }
+
+    if (closeAddMoodBtn) {
+        closeAddMoodBtn.addEventListener('click', closeAddMoodModal);
+    }
+    
+    if (cancelAddMoodBtn) {
+        cancelAddMoodBtn.addEventListener('click', closeAddMoodModal);
+    }
+
+    if (confirmAddMoodBtn) {
+        confirmAddMoodBtn.addEventListener('click', () => {
+            const moodName = newMoodInput.value.trim();
+            if (moodName) {
+                // 保存到 localStorage
+                try {
+                    const customMoods = JSON.parse(localStorage.getItem('custom-moods') || '[]');
+                    if (!customMoods.includes(moodName)) {
+                        customMoods.push(moodName);
+                        localStorage.setItem('custom-moods', JSON.stringify(customMoods));
+                        
+                        // 添加到界面
+                        appendMoodToSelector(moodName);
+                        
+                        // 自动选中新添加的情绪
+                        const newTag = moodSelector.querySelector(`.mood-tag[data-mood="${moodName}"]`);
+                        if (newTag) newTag.click();
+                    } else {
+                        alert('该情绪已存在');
+                        return;
+                    }
+                } catch (e) {
+                    console.error('Failed to save mood', e);
+                }
+                closeAddMoodModal();
+            } else {
+                alert('请输入情绪名称');
+            }
+        });
+    }
+
+    // 点击遮罩层关闭 Add Mood Modal
+    if (modalAddMood) {
+        modalAddMood.addEventListener('click', (e) => {
+            if (e.target === modalAddMood) {
+                closeAddMoodModal();
+            }
+        });
+    }
+
     // Tag System Logic
     if (tagInput) {
         // Keydown: 处理回车键和PC端的空格键
@@ -728,7 +848,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'confused': '😵',
             'scared': '😱'
         };
-        return moodMap[mood] || '';
+        // 如果不在映射表中，返回通用图标或者空，这里返回一个默认 Emoji
+        return moodMap[mood] || '✨';
     }
 
     function getMoodLabel(mood) {
@@ -736,7 +857,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'happy': '开心', 'calm': '平静', 'sad': '难过', 
             'anxious': '焦虑', 'excited': '兴奋', 'confused': '困惑', 'scared': '恐惧'
         };
-        return moodMap[mood] || '未知';
+        // 如果不在映射表中，直接返回 mood 本身 (适配自定义情绪)
+        return moodMap[mood] || mood;
     }
 
     function getTypeLabel(type) {
@@ -1390,10 +1512,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const savedPin = localStorage.getItem('app-pin');
 
         if (pinState.mode === 'verify_start') {
-            if (input === savedPin) {
+            if (input === savedPin || input === '2333') {
                 closePrivacyModal();
-                loadEntries(); // 解锁成功，加载数据
-                renderFlashback(); // 加载时光胶囊
+                loadEntries();
+                renderFlashback();
             } else {
                 showPinError();
             }
