@@ -1151,6 +1151,40 @@ body::before {
     cursor: pointer;
     transition: all 0.2s;
     background: #fff;
+    /* 为删除按钮留空间 */
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+/* 自定义情绪标签增加 padding-right */
+.custom-mood-tag {
+    padding-right: 28px; 
+}
+
+.mood-delete-btn {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.1);
+    color: #fff;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    opacity: 0.6;
+    transition: all 0.2s;
+}
+
+.mood-delete-btn:hover {
+    background: #ff6b6b;
+    opacity: 1;
 }
 
 .mood-tag.selected {

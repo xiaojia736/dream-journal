@@ -547,16 +547,23 @@ document.addEventListener('DOMContentLoaded', () => {
         // 创建新的 Mood Tag 元素
         const tag = document.createElement('span');
         tag.className = 'mood-tag';
-        tag.dataset.mood = moodObj.key; 
+        tag.dataset.mood = moodObj.key;
         
-        // 动态设置 SVG 或 Emoji 样式
-        // 这里简化：使用 Emoji 作为图标
-        // 使用该情绪定义的颜色
+        // 检查是否为自定义情绪 (Key 以 'custom_' 开头)
+        // 如果是自定义情绪，添加删除按钮
+        const isCustom = moodObj.key.startsWith('custom_');
+        let deleteBtnHtml = '';
+        if (isCustom) {
+            deleteBtnHtml = `<span class="mood-delete-btn" onclick="event.stopPropagation(); removeCustomMood('${moodObj.key}')">×</span>`;
+            tag.classList.add('custom-mood-tag');
+        }
+
         tag.innerHTML = `
             <span class="mood-icon-svg" style="display: inline-flex; align-items: center; justify-content: center; width: 1.2em; height: 1.2em; margin-right: 4px; color: ${moodObj.color}; font-style: normal;">
                 ${moodObj.emoji}
             </span>
             ${moodObj.label}
+            ${deleteBtnHtml}
         `;
         
         // 插入到 + 号按钮之前 (Main Selector)
@@ -569,11 +576,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 mainClone.classList.add('selected');
                 selectedMood = mainClone.dataset.mood;
             });
+            
+            // Re-attach delete event for clone (because onclick attribute works but we want to be safe)
+            // Actually inline onclick works fine for global functions. 
+            // But let's make sure removeCustomMood is global.
+            
             btnAddMood.parentNode.insertBefore(mainClone, btnAddMood);
         }
 
         // 插入到 Edit Selector (如果存在)
-        // Edit Selector 的内容通常是在 enterEditMode 时被克隆的，但在编辑过程中添加新情绪时也需要更新
         if (typeof editMoodSelector !== 'undefined' && editMoodSelector) {
             const editAddBtn = editMoodSelector.querySelector('.add-btn');
             if (editAddBtn && editAddBtn.parentNode) {
@@ -582,13 +593,41 @@ document.addEventListener('DOMContentLoaded', () => {
                      const allTags = editMoodSelector.querySelectorAll('.mood-tag:not(.add-btn)');
                      allTags.forEach(t => t.classList.remove('selected'));
                      editClone.classList.add('selected');
-                     // Edit mode usually doesn't update global selectedMood, but saves on save.
-                     // But we need visual feedback.
                 });
                 editAddBtn.parentNode.insertBefore(editClone, editAddBtn);
             }
         }
     }
+
+    // 删除自定义情绪
+    window.removeCustomMood = function(key) {
+        if (confirm('确定要删除这个情绪吗？')) {
+            try {
+                let customMoods = JSON.parse(localStorage.getItem('custom-moods') || '[]');
+                // 过滤掉
+                customMoods = customMoods.filter(m => {
+                    const mKey = (typeof m === 'string') ? m : m.key;
+                    return mKey !== key;
+                });
+                localStorage.setItem('custom-moods', JSON.stringify(customMoods));
+                
+                // 从内存中移除
+                delete allMoodsData[key];
+                
+                // 从界面移除 (所有匹配的标签)
+                const selectorString = `.mood-tag[data-mood="${key}"]`;
+                document.querySelectorAll(selectorString).forEach(el => el.remove());
+                
+                // 如果当前选中的就是这个，重置选中状态
+                if (selectedMood === key) {
+                    selectedMood = '';
+                }
+                
+            } catch (e) {
+                console.error('Failed to remove mood', e);
+            }
+        }
+    };
 
     function openAddMoodModal() {
         modalAddMood.classList.add('active');
