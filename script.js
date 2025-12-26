@@ -596,7 +596,21 @@ document.addEventListener('DOMContentLoaded', () => {
         newMoodEmoji.value = '';
         newMoodColor.value = '#a18cd1'; // 重置为默认颜色
         colorPreviewText.textContent = '#a18cd1';
-        newMoodInput.focus();
+        
+        // 稍微延迟聚焦，等待模态框动画开始
+        setTimeout(() => {
+            newMoodInput.focus();
+        }, 100);
+    }
+
+    // 监听 emoji 输入框聚焦，防止键盘遮挡
+    if (newMoodEmoji) {
+        newMoodEmoji.addEventListener('focus', () => {
+             // 延迟滚动，等待键盘弹出
+            setTimeout(() => {
+                newMoodEmoji.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 300);
+        });
     }
 
     function closeAddMoodModal() {
