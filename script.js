@@ -549,9 +549,9 @@ document.addEventListener('DOMContentLoaded', () => {
         tag.className = 'mood-tag';
         tag.dataset.mood = moodObj.key;
         
-        // 检查是否为自定义情绪 (Key 以 'custom_' 开头)
+        // 检查是否为自定义情绪 (不在默认列表中)
         // 如果是自定义情绪，添加删除按钮
-        const isCustom = moodObj.key.startsWith('custom_');
+        const isCustom = !defaultMoods[moodObj.key];
         let deleteBtnHtml = '';
         if (isCustom) {
             deleteBtnHtml = `<span class="mood-delete-btn" onclick="event.stopPropagation(); removeCustomMood('${moodObj.key}')">×</span>`;
