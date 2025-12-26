@@ -1794,4 +1794,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
         });
     }
+
+    // --- 键盘遮挡适配逻辑 ---
+    // 监听可视视口调整大小 (软键盘弹出/收起)
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', () => {
+            // 当键盘弹出时，当前聚焦的元素可能被遮挡
+            // 我们稍微延迟一下，等待布局稳定，然后滚动
+            if (document.activeElement && 
+               (document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'INPUT')) {
+                setTimeout(() => {
+                    document.activeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 300);
+            }
+        });
+    }
+
+    // 为所有输入框添加聚焦时的滚动逻辑
+    document.addEventListener('focusin', (e) => {
+        if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') {
+            // 延迟以等待键盘完全弹出
+            setTimeout(() => {
+                e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 300);
+        }
+    });
 });
