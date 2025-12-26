@@ -99,6 +99,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const cancelAddMoodBtn = document.getElementById('cancel-add-mood-btn');
     const confirmAddMoodBtn = document.getElementById('confirm-add-mood-btn');
     const newMoodInput = document.getElementById('new-mood-input');
+    const newMoodEmoji = document.getElementById('new-mood-emoji');
+    const newMoodColor = document.getElementById('new-mood-color');
+    const colorPreviewText = document.getElementById('color-preview-text');
+
+    // 默认/内置情绪数据映射
+    const defaultMoods = {
+        'happy': { label: '开心', emoji: '😊', color: '#FFD166' },
+        'calm': { label: '平静', emoji: '😌', color: '#06D6A0' },
+        'sad': { label: '难过', emoji: '😢', color: '#118AB2' },
+        'anxious': { label: '焦虑', emoji: '😰', color: '#118AB2' }, // 复用色
+        'excited': { label: '兴奋', emoji: '🤩', color: '#FFD166' }, // 复用色
+        'confused': { label: '困惑', emoji: '😵', color: '#EF476F' },
+        'scared': { label: '恐惧', emoji: '😱', color: '#9B89B3' }
+    };
+    
+    // 内存中的完整情绪列表 (内置 + 自定义)
+    let allMoodsData = { ...defaultMoods };
 
     // 初始化应用
     function initApp() {
@@ -271,18 +288,27 @@ document.addEventListener('DOMContentLoaded', () => {
             if (r.value === entry.type) r.checked = true;
         });
 
-        // Mood - Clone structure from main form if empty
-        if (!editMoodSelector.hasChildNodes()) {
-             // Clone the mood tags from the main selector for consistency
-             const mainMoodSelector = document.getElementById('mood-selector');
-             if (mainMoodSelector) {
-                 editMoodSelector.innerHTML = mainMoodSelector.innerHTML;
-                 // Re-bind click events for selection
-                 editMoodSelector.querySelectorAll('.mood-tag').forEach(tag => {
-                     tag.addEventListener('click', () => {
-                        editMoodSelector.querySelectorAll('.mood-tag').forEach(t => t.classList.remove('selected'));
-                        tag.classList.add('selected');
-                     });
+        // Mood - Clone structure from main form to ensure latest custom moods are included
+        const mainMoodSelector = document.getElementById('mood-selector');
+        if (mainMoodSelector) {
+             editMoodSelector.innerHTML = mainMoodSelector.innerHTML;
+             
+             // Re-bind click events for selection
+             editMoodSelector.querySelectorAll('.mood-tag:not(.add-btn)').forEach(tag => {
+                 tag.addEventListener('click', () => {
+                    editMoodSelector.querySelectorAll('.mood-tag').forEach(t => t.classList.remove('selected'));
+                    tag.classList.add('selected');
+                 });
+             });
+
+             // Re-bind add button event
+             const editAddBtn = editMoodSelector.querySelector('.add-btn');
+             if (editAddBtn) {
+                 // Remove ID to avoid duplicates
+                 editAddBtn.removeAttribute('id');
+                 editAddBtn.addEventListener('click', (e) => {
+                     e.preventDefault();
+                     openAddMoodModal();
                  });
              }
         }
@@ -490,49 +516,86 @@ document.addEventListener('DOMContentLoaded', () => {
     function loadCustomMoods() {
         try {
             const customMoods = JSON.parse(localStorage.getItem('custom-moods') || '[]');
+            
             customMoods.forEach(mood => {
-                appendMoodToSelector(mood);
+                // 兼容旧数据格式 (如果 mood 是字符串，转换为对象)
+                let moodObj = mood;
+                if (typeof mood === 'string') {
+                    moodObj = {
+                        key: mood, // 使用原名作为key
+                        label: mood,
+                        emoji: '✨', // 默认图标
+                        color: '#888888' // 默认颜色
+                    };
+                }
+                
+                // 添加到全局数据
+                allMoodsData[moodObj.key] = {
+                    label: moodObj.label,
+                    emoji: moodObj.emoji,
+                    color: moodObj.color
+                };
+
+                appendMoodToSelector(moodObj);
             });
         } catch (e) {
             console.error('Failed to load custom moods', e);
         }
     }
 
-    function appendMoodToSelector(moodName) {
+    function appendMoodToSelector(moodObj) {
         // 创建新的 Mood Tag 元素
         const tag = document.createElement('span');
         tag.className = 'mood-tag';
-        tag.dataset.mood = moodName; // 使用名称作为 key
+        tag.dataset.mood = moodObj.key; 
         
-        // 默认图标 (比如一个星号或者自定义图标)
-        // 这里使用一个通用的 SVG 或者 emoji
+        // 动态设置 SVG 或 Emoji 样式
+        // 这里简化：使用 Emoji 作为图标
+        // 使用该情绪定义的颜色
         tag.innerHTML = `
-            <span class="mood-icon-svg" style="display: inline-flex; align-items: center; justify-content: center; width: 1.2em; height: 1.2em; margin-right: 4px; color: #888;">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%">
-                     <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM12.75 9a.75.75 0 00-1.5 0v2.25H9a.75.75 0 000 1.5h2.25V15a.75.75 0 001.5 0v-2.25H15a.75.75 0 000-1.5h-2.25V9z" clip-rule="evenodd" />
-                </svg>
+            <span class="mood-icon-svg" style="display: inline-flex; align-items: center; justify-content: center; width: 1.2em; height: 1.2em; margin-right: 4px; color: ${moodObj.color}; font-style: normal;">
+                ${moodObj.emoji}
             </span>
-            ${moodName}
+            ${moodObj.label}
         `;
         
-        // 插入到 + 号按钮之前
+        // 插入到 + 号按钮之前 (Main Selector)
         if (btnAddMood && btnAddMood.parentNode) {
-            btnAddMood.parentNode.insertBefore(tag, btnAddMood);
+            // Clone first to attach event
+            const mainClone = tag.cloneNode(true);
+            mainClone.addEventListener('click', () => {
+                const allTags = moodSelector.querySelectorAll('.mood-tag:not(.add-btn)');
+                allTags.forEach(t => t.classList.remove('selected'));
+                mainClone.classList.add('selected');
+                selectedMood = mainClone.dataset.mood;
+            });
+            btnAddMood.parentNode.insertBefore(mainClone, btnAddMood);
         }
 
-        // 绑定点击事件
-        tag.addEventListener('click', () => {
-             // 获取所有当前的 mood-tag (包括动态添加的)
-            const allTags = moodSelector.querySelectorAll('.mood-tag:not(.add-btn)');
-            allTags.forEach(t => t.classList.remove('selected'));
-            tag.classList.add('selected');
-            selectedMood = tag.dataset.mood;
-        });
+        // 插入到 Edit Selector (如果存在)
+        // Edit Selector 的内容通常是在 enterEditMode 时被克隆的，但在编辑过程中添加新情绪时也需要更新
+        if (typeof editMoodSelector !== 'undefined' && editMoodSelector) {
+            const editAddBtn = editMoodSelector.querySelector('.add-btn');
+            if (editAddBtn && editAddBtn.parentNode) {
+                const editClone = tag.cloneNode(true);
+                editClone.addEventListener('click', () => {
+                     const allTags = editMoodSelector.querySelectorAll('.mood-tag:not(.add-btn)');
+                     allTags.forEach(t => t.classList.remove('selected'));
+                     editClone.classList.add('selected');
+                     // Edit mode usually doesn't update global selectedMood, but saves on save.
+                     // But we need visual feedback.
+                });
+                editAddBtn.parentNode.insertBefore(editClone, editAddBtn);
+            }
+        }
     }
 
     function openAddMoodModal() {
         modalAddMood.classList.add('active');
         newMoodInput.value = '';
+        newMoodEmoji.value = '';
+        newMoodColor.value = '#a18cd1'; // 重置为默认颜色
+        colorPreviewText.textContent = '#a18cd1';
         newMoodInput.focus();
     }
 
@@ -547,6 +610,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // 监听颜色变化更新预览文本
+    if (newMoodColor) {
+        newMoodColor.addEventListener('input', (e) => {
+            colorPreviewText.textContent = e.target.value;
+        });
+    }
+
     if (closeAddMoodBtn) {
         closeAddMoodBtn.addEventListener('click', closeAddMoodModal);
     }
@@ -557,25 +627,48 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (confirmAddMoodBtn) {
         confirmAddMoodBtn.addEventListener('click', () => {
-            const moodName = newMoodInput.value.trim();
-            if (moodName) {
+            const label = newMoodInput.value.trim();
+            const emoji = newMoodEmoji.value.trim() || '✨'; // 默认星星
+            const color = newMoodColor.value;
+            
+            if (label) {
+                const key = 'custom_' + Date.now(); // 生成唯一Key
+
+                const newMoodObj = {
+                    key: key,
+                    label: label,
+                    emoji: emoji,
+                    color: color
+                };
+
                 // 保存到 localStorage
                 try {
                     const customMoods = JSON.parse(localStorage.getItem('custom-moods') || '[]');
-                    if (!customMoods.includes(moodName)) {
-                        customMoods.push(moodName);
-                        localStorage.setItem('custom-moods', JSON.stringify(customMoods));
-                        
-                        // 添加到界面
-                        appendMoodToSelector(moodName);
-                        
-                        // 自动选中新添加的情绪
-                        const newTag = moodSelector.querySelector(`.mood-tag[data-mood="${moodName}"]`);
-                        if (newTag) newTag.click();
-                    } else {
-                        alert('该情绪已存在');
-                        return;
+                    
+                    // 检查是否重名 (可选，这里只检查 key，但 key 是自动生成的)
+                    // 如果想按 Label 判重:
+                    const exists = customMoods.some(m => (typeof m === 'string' ? m : m.label) === label);
+                    if (exists) {
+                         alert('该情绪名称已存在');
+                         return;
                     }
+
+                    customMoods.push(newMoodObj);
+                    localStorage.setItem('custom-moods', JSON.stringify(customMoods));
+                    
+                    // 更新全局数据
+                    allMoodsData[key] = {
+                        label: label,
+                        emoji: emoji,
+                        color: color
+                    };
+
+                    // 添加到界面
+                    appendMoodToSelector(newMoodObj);
+                    
+                    // 自动选中新添加的情绪
+                    const newTag = moodSelector.querySelector(`.mood-tag[data-mood="${key}"]`);
+                    if (newTag) newTag.click();
                 } catch (e) {
                     console.error('Failed to save mood', e);
                 }
@@ -839,6 +932,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function getMoodEmoji(mood) {
+        // 先检查是否在全局 allMoodsData 中
+        if (allMoodsData[mood]) {
+            return allMoodsData[mood].emoji;
+        }
+        // 兜底逻辑
         const moodMap = {
             'happy': '😊', 
             'calm': '😌', 
@@ -853,12 +951,32 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function getMoodLabel(mood) {
+        // 先检查是否在全局 allMoodsData 中
+        if (allMoodsData[mood]) {
+            return allMoodsData[mood].label;
+        }
+        
         const moodMap = {
             'happy': '开心', 'calm': '平静', 'sad': '难过', 
             'anxious': '焦虑', 'excited': '兴奋', 'confused': '困惑', 'scared': '恐惧'
         };
         // 如果不在映射表中，直接返回 mood 本身 (适配自定义情绪)
         return moodMap[mood] || mood;
+    }
+    
+    // 辅助函数：获取情绪颜色
+    function getMoodColor(mood) {
+        if (allMoodsData[mood]) {
+            return allMoodsData[mood].color;
+        }
+        // 内置默认颜色映射
+        const colorMap = {
+             'happy': '#FFD166', 'excited': '#FFD166',
+             'calm': '#06D6A0',
+             'sad': '#118AB2', 'anxious': '#118AB2',
+             'confused': '#EF476F', 'scared': '#9B89B3'
+        };
+        return colorMap[mood] || '#ccc';
     }
 
     function getTypeLabel(type) {
@@ -935,8 +1053,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 ` : ''; */
 
+                // 使用新函数获取颜色
+                const moodColor = getMoodColor(entry.mood);
+                
                 return `
-                <div class="dream-entry" data-mood="${entry.mood || ''}">
+                <div class="dream-entry" data-mood="${entry.mood || ''}" style="--mood-color: ${moodColor}">
                     <button class="delete-entry-btn" data-id="${entry.id}" aria-label="删除">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
@@ -1022,15 +1143,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const container = document.getElementById('heatmap-chart');
         
         // 准备心情颜色映射 (莫兰迪/马卡龙色盘)
-        const moodColors = {
-            'happy': '#FFD166',    // 温暖的夕阳黄
-            'excited': '#FFD166',  // 复用开心
-            'calm': '#06D6A0',     // 清透的海水绿
-            'sad': '#118AB2',      // 忧郁的深海蓝
-            'anxious': '#118AB2',  // 复用难过
-            'confused': '#EF476F', // 柔和的珊瑚粉
-            'scared': '#EF476F'    // 复用梦幻
-        };
+        // const moodColors = { ... } // 废弃，改用 getMoodColor
 
         // 处理数据：将 entries 映射为 date -> mood
         const dateMoodMap = {};
@@ -1063,7 +1176,7 @@ document.addEventListener('DOMContentLoaded', () => {
         container.innerHTML = days.map(date => {
             const dateKey = date.toDateString();
             const mood = dateMoodMap[dateKey];
-            const color = mood ? moodColors[mood] : '';
+            const color = mood ? getMoodColor(mood) : ''; // 使用新函数
             const style = color ? `background-color: ${color};` : '';
             const className = mood ? 'heatmap-day has-data' : 'heatmap-day';
             const title = `${date.toLocaleDateString()} ${mood ? getMoodLabel(mood) : '无记录'}`;
@@ -1138,9 +1251,15 @@ document.addEventListener('DOMContentLoaded', () => {
             // 延迟动画
             const delay = index * 0.1;
             
+            // 动态背景色
+            const bgColor = getMoodColor(mood);
+            // 简单处理：如果是默认心情，使用 CSS 类定义的渐变；如果是自定义心情，使用单色背景
+            // 但为了统一，我们可以全都用单色或者尽量匹配
+            // 这里我们直接内联样式覆盖背景
+            
             return `
-            <div class="mood-bubble bubble-${mood}" 
-                 style="width: ${size}px; height: ${size}px; animation-delay: ${delay}s"
+            <div class="mood-bubble" 
+                 style="width: ${size}px; height: ${size}px; animation-delay: ${delay}s; background: ${bgColor};"
                  title="${getMoodLabel(mood)}: ${count}次">
                 <span class="emoji">${getMoodEmoji(mood)}</span>
                 <span class="count">${count}</span>

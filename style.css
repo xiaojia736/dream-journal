@@ -434,45 +434,8 @@ body::before {
     transition: all 0.5s ease;
 }
 
-/* 各情绪光点样式 & 动画 */
-/* 开心/兴奋/平静 (暖色/亮色) -> 稍微明亮跳跃 (快/中速) */
-.dream-entry[data-mood="happy"]::before,
-.dream-entry[data-mood="excited"]::before {
-    background: #ff9a9e;
-    box-shadow: 0 0 8px #ff9a9e, 0 0 16px rgba(255, 154, 158, 0.6);
-    animation: breathe-fast 1.5s infinite ease-in-out alternate;
-}
-
-.dream-entry[data-mood="calm"]::before {
-    background: #a18cd1;
-    box-shadow: 0 0 8px #a18cd1, 0 0 12px rgba(161, 140, 209, 0.5);
-    animation: breathe-normal 3s infinite ease-in-out alternate;
-}
-
-/* 难过/焦虑/恐惧 (冷色/深色) -> 呼吸慢 */
-.dream-entry[data-mood="sad"]::before {
-    background: #89f7fe;
-    box-shadow: 0 0 8px #89f7fe, 0 0 12px rgba(137, 247, 254, 0.5);
-    animation: breathe-slow 4s infinite ease-in-out alternate;
-}
-
-.dream-entry[data-mood="anxious"]::before {
-    background: #4facfe;
-    box-shadow: 0 0 8px #4facfe, 0 0 12px rgba(79, 172, 254, 0.5);
-    animation: breathe-irregular 2.5s infinite ease-in-out alternate; /* 略微不安的节奏 */
-}
-
-.dream-entry[data-mood="scared"]::before {
-    background: #434343;
-    box-shadow: 0 0 5px #434343;
-    animation: breathe-slow 5s infinite ease-in-out; /* 极慢 */
-}
-
-.dream-entry[data-mood="confused"]::before {
-    background: #cfd9df;
-    box-shadow: 0 0 8px #cfd9df;
-    animation: breathe-normal 3s infinite ease-in-out alternate;
-}
+/* 各情绪光点样式 & 动画 (已废弃，改用通用变量 --mood-color) */
+/* .dream-entry[data-mood="happy"]::before ... */
 
 /* 动画定义 */
 @keyframes breathe-fast {
@@ -1450,14 +1413,37 @@ body::before {
     opacity: 0.8;
 }
 
-/* 气泡颜色定义 - 莫兰迪/马卡龙色盘 */
-.bubble-happy { background: linear-gradient(135deg, #FFD166 0%, #FFECB3 100%); } /* 温暖的夕阳黄 */
-.bubble-excited { background: linear-gradient(135deg, #FFD166 0%, #FFECB3 100%); } /* 复用开心色 */
-.bubble-calm { background: linear-gradient(135deg, #06D6A0 0%, #80EDCE 100%); } /* 清透的海水绿 */
-.bubble-sad { background: linear-gradient(135deg, #118AB2 0%, #7ACFE6 100%); } /* 忧郁的深海蓝 */
-.bubble-anxious { background: linear-gradient(135deg, #118AB2 0%, #7ACFE6 100%); } /* 复用难过色 */
-.bubble-confused { background: linear-gradient(135deg, #EF476F 0%, #F7A8B8 100%); } /* 柔和的珊瑚粉 */
-.bubble-scared { background: linear-gradient(135deg, #EF476F 0%, #F7A8B8 100%); } /* 复用珊瑚粉 */
+/* 气泡颜色定义 - 莫兰迪/马卡龙色盘 (保留作为后备，但主要通过 JS 内联样式控制) */
+.bubble-happy { background: linear-gradient(135deg, #FFD166 0%, #FFECB3 100%); }
+/* ... 其他 bubble-* 类 ... */
+
+/* 呼吸光点样式更新：移除固定的 mood 选择器，改用通用变量或 JS 控制 */
+/* 由于 CSS 无法直接动态读取 JS 变量到 keyframes，我们保留默认动画，但颜色通过 style 注入 */
+/* 实际上，我们在 style.css 里写死了 .dream-entry[data-mood="happy"]::before 等 */
+/* 为了支持自定义情绪的呼吸灯颜色，我们需要在 JS 生成 HTML 时注入 style="--mood-color: #xxx" */
+
+.dream-entry::before {
+    content: '';
+    position: absolute;
+    left: 14px; 
+    top: 24px; /* 对齐 Header */
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    
+    /* 默认样式 (无情绪时) */
+    background: var(--mood-color, #ccc); /* 使用变量 */
+    box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    /* 统一使用一个通用呼吸动画，或者根据 ID 随机 */
+    animation: breathe-custom 3s infinite ease-in-out alternate;
+    transition: all 0.5s ease;
+}
+
+@keyframes breathe-custom {
+    0% { transform: scale(0.95); opacity: 0.7; box-shadow: 0 0 5px var(--mood-color, #ccc); }
+    50% { transform: scale(1.1); opacity: 1; box-shadow: 0 0 12px var(--mood-color, #ccc); }
+    100% { transform: scale(0.95); opacity: 0.7; box-shadow: 0 0 5px var(--mood-color, #ccc); }
+}
 
 @keyframes popIn {
     0% { opacity: 0; transform: scale(0); }

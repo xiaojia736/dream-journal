@@ -419,16 +419,34 @@
 
     <!-- 添加新情绪弹出层 (Modal) -->
     <div id="modal-add-mood" class="modal-overlay">
-        <div class="modal-content" style="height: auto; min-height: 200px; max-height: 400px; justify-content: center;">
+        <div class="modal-content" style="height: auto; min-height: 400px; max-height: 600px;">
             <div class="modal-header">
                 <h3>添加新情绪</h3>
                 <button id="close-add-mood-btn" class="close-btn">×</button>
             </div>
-            <div class="modal-body" style="flex: none;">
+            <div class="modal-body" style="flex: none; display: flex; flex-direction: column; gap: 1rem;">
+                <!-- 情绪名称 -->
                 <div class="form-group">
-                    <input type="text" id="new-mood-input" placeholder="输入情绪名称 (如: 疲惫)" class="form-input" style="padding: 10px; border-radius: 12px; border: 1px solid var(--border-color); font-family: inherit;">
+                    <label class="form-label">名称</label>
+                    <input type="text" id="new-mood-input" placeholder="例如: 疲惫" class="form-input" style="padding: 10px; border-radius: 12px; border: 1px solid var(--border-color); font-family: inherit;">
                 </div>
-                <div class="form-actions" style="display: flex; gap: 10px; margin-top: 20px;">
+                
+                <!-- Emoji 选择 -->
+                <div class="form-group">
+                    <label class="form-label">Emoji 图标</label>
+                    <input type="text" id="new-mood-emoji" placeholder="例如: 😫" class="form-input" style="padding: 10px; border-radius: 12px; border: 1px solid var(--border-color); font-family: inherit; width: 100px; text-align: center; font-size: 1.2rem;">
+                </div>
+
+                <!-- 颜色选择 -->
+                <div class="form-group">
+                    <label class="form-label">代表色</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="color" id="new-mood-color" value="#a18cd1" style="width: 50px; height: 40px; border: none; background: transparent; cursor: pointer;">
+                        <span id="color-preview-text" style="color: var(--text-secondary); font-size: 0.9rem;">#a18cd1</span>
+                    </div>
+                </div>
+
+                <div class="form-actions" style="display: flex; gap: 10px; margin-top: 10px;">
                     <button id="cancel-add-mood-btn" class="secondary-btn" style="flex: 1; padding: 10px; border-radius: 20px; border: 1px solid var(--border-color); background: transparent; cursor: pointer;">取消</button>
                     <button id="confirm-add-mood-btn" class="primary-btn" style="flex: 1; margin-top: 0;">确认</button>
                 </div>
