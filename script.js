@@ -103,6 +103,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const newMoodColor = document.getElementById('new-mood-color');
     const colorPreviewText = document.getElementById('color-preview-text');
 
+    // 通用星星 SVG 图标
+    const STAR_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%"><path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.375-2.212.749-2.305l5.404-.433 2.082-5.006z" clip-rule="evenodd" /></svg>`;
+
     // 默认/内置情绪数据映射
     const defaultMoods = {
         'happy': { label: '开心', emoji: '😊', color: '#FFD166' },
@@ -558,11 +561,22 @@ document.addEventListener('DOMContentLoaded', () => {
             tag.classList.add('custom-mood-tag');
         }
 
+        // 统一展示逻辑：
+        // 1. 星星图标 (颜色正确)
+        // 2. 文字
+        // 3. Emoji
+        // 4. (可选) 删除按钮
+        // 注意：原需求是 "自定义情绪时...文字前面使用星星展示正确的颜色，文字后面展示emoji"
+        // 同时提到 "目前的自带情绪，文字前的星星已经OK，需要在文字末尾补上emoji"
+        // 意味着所有情绪都统一为：[星星] [文字] [emoji] [x]
+        
         tag.innerHTML = `
             <span class="mood-icon-svg" style="display: inline-flex; align-items: center; justify-content: center; width: 1.2em; height: 1.2em; margin-right: 4px; color: ${moodObj.color}; font-style: normal;">
-                ${moodObj.emoji}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%">
+                     <path fill-rule="evenodd" d="M9 4.5a.75.75 0 01.721.544l.813 2.846a3.75 3.75 0 002.576 2.576l2.846.813a.75.75 0 010 1.442l-2.846.813a3.75 3.75 0 00-2.576 2.576l-.813 2.846a.75.75 0 01-1.442 0l-.813-2.846a3.75 3.75 0 00-2.576-2.576l-2.846-.813a.75.75 0 010-1.442l2.846-.813a3.75 3.75 0 002.576-2.576L8.279 5.044A.75.75 0 019 4.5zM18 1.5a.75.75 0 01.728.568l.258 1.036c.236.94.97 1.674 1.91 1.91l1.036.258a.75.75 0 010 1.456l-1.036.258c-.94.236-1.674.97-1.91 1.91l-.258 1.036a.75.75 0 01-1.456 0l-.258-1.036a2.625 2.625 0 00-1.91-1.91l-1.036-.258a.75.75 0 010-1.456l1.036-.258a2.625 2.625 0 001.91-1.91l.258-1.036A.75.75 0 0118 1.5zM16.5 15a.75.75 0 01.712.513l.394 1.183c.15.447.5.799.948.948l1.183.395a.75.75 0 010 1.422l-1.183.395c-.447.15-.799.5-.948.948l-.395 1.183a.75.75 0 01-1.422 0l-.395-1.183a1.5 1.5 0 00-.948-.948l-1.183-.395a.75.75 0 010-1.422l1.183-.395c.447-.15.799-.5.948-.948l.395-1.183A.75.75 0 0116.5 15z" clip-rule="evenodd" />
+                </svg>
             </span>
-            ${moodObj.label}
+            ${moodObj.label} ${moodObj.emoji}
             ${deleteBtnHtml}
         `;
         
