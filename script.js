@@ -1050,12 +1050,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         color: color
                     };
 
-                    // 添加到界面
+                    // 添加到界面（不自动选中；由用户自行点击选择）
                     appendMoodToSelector(newMoodObj);
-                    
-                    // 自动选中新添加的情绪
-                    const newTag = moodSelector.querySelector(`.mood-tag[data-mood="${key}"]`);
-                    if (newTag) newTag.click();
                 } catch (e) {
                     console.error('Failed to save mood', e);
                 }
