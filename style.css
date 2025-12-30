@@ -1182,8 +1182,9 @@ body::before {
 
 /* 情绪选择器 */
 .mood-selector {
-    display: flex;
-    flex-wrap: wrap;
+    /* 让每行稳定展示 3 个情绪 */
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.6rem;
 }
 
@@ -1201,6 +1202,24 @@ body::before {
     display: flex;
     align-items: center;
     gap: 2px;
+}
+
+/* 情绪选择器里的标签：更紧凑，保证 3 列好看 */
+.mood-selector .mood-tag {
+    width: 100%;
+    justify-content: center;
+    padding: 0.45rem 0.6rem;
+    font-size: 0.82rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* “+”按钮保持居中并与网格一致 */
+.mood-selector .mood-tag.add-btn {
+    width: 100%;
+    height: auto;
+    aspect-ratio: auto;
 }
 
 /* 自定义情绪标签增加 padding-right */
