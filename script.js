@@ -812,7 +812,8 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="mood-icon-svg" style="display: inline-flex; align-items: center; justify-content: center; width: 1.2em; height: 1.2em; margin-right: 4px; color: ${moodObj.color}; font-style: normal;">
                 ${STAR_SVG}
             </span>
-            ${moodObj.label} ${moodObj.emoji}
+            <span class="mood-label">${moodObj.label}</span>
+            <span class="mood-emoji">${moodObj.emoji}</span>
             ${deleteBtnHtml}
         `;
         

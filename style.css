@@ -1199,10 +1199,11 @@ body::before {
 
 /* 情绪选择器 */
 .mood-selector {
-    /* 让每行稳定展示 3 个情绪 */
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.6rem;
+    /* 让“+”按钮自然紧跟最后一个情绪；同时每行尽量 3 个 */
+    --mood-gap: 0.6rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--mood-gap);
 }
 
 .mood-tag {
@@ -1223,8 +1224,10 @@ body::before {
 
 /* 情绪选择器里的标签：更紧凑，保证 3 列好看 */
 .mood-selector .mood-tag {
-    width: 100%;
-    justify-content: center;
+    /* 3 个一行：两个 gap */
+    flex: 0 0 calc((100% - (2 * var(--mood-gap))) / 3);
+    min-width: 0;
+    justify-content: flex-start;
     padding: 0.45rem 0.6rem;
     font-size: 0.82rem;
     white-space: nowrap;
@@ -1234,8 +1237,9 @@ body::before {
 
 /* “+”按钮：在 3 列网格里保持圆形、居中 */
 .mood-selector .mood-tag.add-btn {
-    justify-self: center;
-    align-self: center;
+    /* 在 flex 流中仍占 1/3 宽度，这样它会紧跟最后一个 item 换行 */
+    flex: 0 0 calc((100% - (2 * var(--mood-gap))) / 3);
+    min-width: 0;
     width: 38px;
     height: 38px;
     padding: 0;
@@ -1250,7 +1254,12 @@ body::before {
 
 /* 自定义情绪标签增加 padding-right */
 .custom-mood-tag {
-    padding-right: 28px; 
+    padding-right: 36px;
+}
+
+/* 自定义情绪：给 emoji 右侧留空间，避免与删除按钮重叠 */
+.custom-mood-tag .mood-emoji {
+    margin-right: 14px;
 }
 
 .mood-delete-btn {
