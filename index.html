@@ -36,8 +36,8 @@
             <div id="flashback-card" class="flashback-card hidden">
                 <div class="flashback-icon">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
-                </svg>
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
+                    </svg>
                 </div>
                 <div class="flashback-content">
                     <div class="flashback-title"></div>
@@ -99,7 +99,6 @@
                     <h3>情绪色彩</h3>
                     <p class="module-desc">你最近的情绪像气泡一样多彩</p>
                     <div id="mood-chart" class="mood-bubble-container">
-                        <!-- 动态生成气泡 -->
                         <div class="empty-chart">暂无数据</div>
                     </div>
                 </div>
@@ -108,18 +107,14 @@
                 <div class="stats-module">
                     <h3>情绪足迹</h3>
                     <p class="module-desc">过去30天的心情轨迹</p>
-                    <div id="heatmap-chart" class="heatmap-container">
-                        <!-- 动态生成格子 -->
-                    </div>
+                    <div id="heatmap-chart" class="heatmap-container"></div>
                 </div>
 
                 <!-- 类型分布 - 迷你圆环图 -->
                 <div class="stats-module">
                     <h3>记录类型</h3>
-                     <p class="module-desc">生活点滴的组成成分</p>
-                    <div id="type-chart" class="type-rings-container">
-                        <!-- 动态生成圆环 -->
-                    </div>
+                    <p class="module-desc">生活点滴的组成成分</p>
+                    <div id="type-chart" class="type-rings-container"></div>
                 </div>
             </div>
         </div>
@@ -145,7 +140,7 @@
                 </div>
 
                 <div class="settings-group">
-                     <div class="settings-item" id="btn-privacy-lock">
+                    <div class="settings-item" id="btn-privacy-lock">
                         <div class="item-info">
                             <span class="item-icon">🔒</span>
                             <span class="item-label">隐私锁</span>
@@ -163,7 +158,7 @@
                         </div>
                         <span class="item-arrow">›</span>
                     </div>
-                     <div class="settings-item" id="btn-import-data">
+                    <div class="settings-item" id="btn-import-data">
                         <div class="item-info">
                             <span class="item-icon">📥</span>
                             <span class="item-label">导入数据</span>
@@ -173,7 +168,7 @@
                     </div>
                 </div>
                 
-                 <div class="settings-group">
+                <div class="settings-group">
                     <div class="settings-item danger" id="btn-clear-data">
                         <div class="item-info">
                             <span class="item-icon">🗑️</span>
@@ -253,57 +248,43 @@
                     <div id="mood-selector" class="mood-selector">
                         <span class="mood-tag" data-mood="happy">
                             <span class="mood-icon-svg" style="display: inline-flex; align-items: center; justify-content: center; width: 1.2em; height: 1.2em; margin-right: 4px; color: #FFD166;">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%">
-                                    <path fill-rule="evenodd" d="M9 4.5a.75.75 0 01.721.544l.813 2.846a3.75 3.75 0 002.576 2.576l2.846.813a.75.75 0 010 1.442l-2.846.813a3.75 3.75 0 00-2.576 2.576l-.813 2.846a.75.75 0 01-1.442 0l-.813-2.846a3.75 3.75 0 00-2.576-2.576l-2.846-.813a.75.75 0 010-1.442l2.846-.813a3.75 3.75 0 002.576-2.576L8.279 5.044A.75.75 0 019 4.5zM18 1.5a.75.75 0 01.728.568l.258 1.036c.236.94.97 1.674 1.91 1.91l1.036.258a.75.75 0 010 1.456l-1.036.258c-.94.236-1.674.97-1.91 1.91l-.258 1.036a.75.75 0 01-1.456 0l-.258-1.036a2.625 2.625 0 00-1.91-1.91l-1.036-.258a.75.75 0 010-1.456l1.036-.258a2.625 2.625 0 001.91-1.91l.258-1.036A.75.75 0 0118 1.5zM16.5 15a.75.75 0 01.712.513l.394 1.183c.15.447.5.799.948.948l1.183.395a.75.75 0 010 1.422l-1.183.395c-.447.15-.799.5-.948.948l-.395 1.183a.75.75 0 01-1.422 0l-.395-1.183a1.5 1.5 0 00-.948-.948l-1.183-.395a.75.75 0 010-1.422l1.183-.395c.447-.15.799-.5.948-.948l.395-1.183A.75.75 0 0116.5 15z" clip-rule="evenodd" />
-                                </svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%"><path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.375-2.212.749-2.305l5.404-.433 2.082-5.006z" clip-rule="evenodd" /></svg>
                             </span>
                             开心 😊
                         </span>
                         <span class="mood-tag" data-mood="calm">
                             <span class="mood-icon-svg" style="display: inline-flex; align-items: center; justify-content: center; width: 1.2em; height: 1.2em; margin-right: 4px; color: #06D6A0;">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%">
-                                    <path fill-rule="evenodd" d="M9 4.5a.75.75 0 01.721.544l.813 2.846a3.75 3.75 0 002.576 2.576l2.846.813a.75.75 0 010 1.442l-2.846.813a3.75 3.75 0 00-2.576 2.576l-.813 2.846a.75.75 0 01-1.442 0l-.813-2.846a3.75 3.75 0 00-2.576-2.576l-2.846-.813a.75.75 0 010-1.442l2.846-.813a3.75 3.75 0 002.576-2.576L8.279 5.044A.75.75 0 019 4.5zM18 1.5a.75.75 0 01.728.568l.258 1.036c.236.94.97 1.674 1.91 1.91l1.036.258a.75.75 0 010 1.456l-1.036.258c-.94.236-1.674.97-1.91 1.91l-.258 1.036a.75.75 0 01-1.456 0l-.258-1.036a2.625 2.625 0 00-1.91-1.91l-1.036-.258a.75.75 0 010-1.456l1.036-.258a2.625 2.625 0 001.91-1.91l.258-1.036A.75.75 0 0118 1.5zM16.5 15a.75.75 0 01.712.513l.394 1.183c.15.447.5.799.948.948l1.183.395a.75.75 0 010 1.422l-1.183.395c-.447.15-.799.5-.948.948l-.395 1.183a.75.75 0 01-1.422 0l-.395-1.183a1.5 1.5 0 00-.948-.948l-1.183-.395a.75.75 0 010-1.422l1.183-.395c.447-.15.799-.5.948-.948l.395-1.183A.75.75 0 0116.5 15z" clip-rule="evenodd" />
-                                </svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%"><path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.375-2.212.749-2.305l5.404-.433 2.082-5.006z" clip-rule="evenodd" /></svg>
                             </span>
                             平静 😌
                         </span>
                         <span class="mood-tag" data-mood="sad">
                             <span class="mood-icon-svg" style="display: inline-flex; align-items: center; justify-content: center; width: 1.2em; height: 1.2em; margin-right: 4px; color: #118AB2;">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%">
-                                    <path fill-rule="evenodd" d="M9 4.5a.75.75 0 01.721.544l.813 2.846a3.75 3.75 0 002.576 2.576l2.846.813a.75.75 0 010 1.442l-2.846.813a3.75 3.75 0 00-2.576 2.576l-.813 2.846a.75.75 0 01-1.442 0l-.813-2.846a3.75 3.75 0 00-2.576-2.576l-2.846-.813a.75.75 0 010-1.442l2.846-.813a3.75 3.75 0 002.576-2.576L8.279 5.044A.75.75 0 019 4.5zM18 1.5a.75.75 0 01.728.568l.258 1.036c.236.94.97 1.674 1.91 1.91l1.036.258a.75.75 0 010 1.456l-1.036.258c-.94.236-1.674.97-1.91 1.91l-.258 1.036a.75.75 0 01-1.456 0l-.258-1.036a2.625 2.625 0 00-1.91-1.91l-1.036-.258a.75.75 0 010-1.456l1.036-.258a2.625 2.625 0 001.91-1.91l.258-1.036A.75.75 0 0118 1.5zM16.5 15a.75.75 0 01.712.513l.394 1.183c.15.447.5.799.948.948l1.183.395a.75.75 0 010 1.422l-1.183.395c-.447.15-.799.5-.948.948l-.395 1.183a.75.75 0 01-1.422 0l-.395-1.183a1.5 1.5 0 00-.948-.948l-1.183-.395a.75.75 0 010-1.422l1.183-.395c.447-.15.799-.5.948-.948l.395-1.183A.75.75 0 0116.5 15z" clip-rule="evenodd" />
-                                </svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%"><path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.375-2.212.749-2.305l5.404-.433 2.082-5.006z" clip-rule="evenodd" /></svg>
                             </span>
                             难过 😢
                         </span>
                         <span class="mood-tag" data-mood="anxious">
                             <span class="mood-icon-svg" style="display: inline-flex; align-items: center; justify-content: center; width: 1.2em; height: 1.2em; margin-right: 4px; color: #118AB2;">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%">
-                                    <path fill-rule="evenodd" d="M9 4.5a.75.75 0 01.721.544l.813 2.846a3.75 3.75 0 002.576 2.576l2.846.813a.75.75 0 010 1.442l-2.846.813a3.75 3.75 0 00-2.576 2.576l-.813 2.846a.75.75 0 01-1.442 0l-.813-2.846a3.75 3.75 0 00-2.576-2.576l-2.846-.813a.75.75 0 010-1.442l2.846-.813a3.75 3.75 0 002.576-2.576L8.279 5.044A.75.75 0 019 4.5zM18 1.5a.75.75 0 01.728.568l.258 1.036c.236.94.97 1.674 1.91 1.91l1.036.258a.75.75 0 010 1.456l-1.036.258c-.94.236-1.674.97-1.91 1.91l-.258 1.036a.75.75 0 01-1.456 0l-.258-1.036a2.625 2.625 0 00-1.91-1.91l-1.036-.258a.75.75 0 010-1.456l1.036-.258a2.625 2.625 0 001.91-1.91l.258-1.036A.75.75 0 0118 1.5zM16.5 15a.75.75 0 01.712.513l.394 1.183c.15.447.5.799.948.948l1.183.395a.75.75 0 010 1.422l-1.183.395c-.447.15-.799.5-.948.948l-.395 1.183a.75.75 0 01-1.422 0l-.395-1.183a1.5 1.5 0 00-.948-.948l-1.183-.395a.75.75 0 010-1.422l1.183-.395c.447-.15.799-.5.948-.948l.395-1.183A.75.75 0 0116.5 15z" clip-rule="evenodd" />
-                                </svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%"><path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.375-2.212.749-2.305l5.404-.433 2.082-5.006z" clip-rule="evenodd" /></svg>
                             </span>
                             焦虑 😰
                         </span>
                         <span class="mood-tag" data-mood="excited">
                             <span class="mood-icon-svg" style="display: inline-flex; align-items: center; justify-content: center; width: 1.2em; height: 1.2em; margin-right: 4px; color: #FFD166;">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%">
-                                    <path fill-rule="evenodd" d="M9 4.5a.75.75 0 01.721.544l.813 2.846a3.75 3.75 0 002.576 2.576l2.846.813a.75.75 0 010 1.442l-2.846.813a3.75 3.75 0 00-2.576 2.576l-.813 2.846a.75.75 0 01-1.442 0l-.813-2.846a3.75 3.75 0 00-2.576-2.576l-2.846-.813a.75.75 0 010-1.442l2.846-.813a3.75 3.75 0 002.576-2.576L8.279 5.044A.75.75 0 019 4.5zM18 1.5a.75.75 0 01.728.568l.258 1.036c.236.94.97 1.674 1.91 1.91l1.036.258a.75.75 0 010 1.456l-1.036.258c-.94.236-1.674.97-1.91 1.91l-.258 1.036a.75.75 0 01-1.456 0l-.258-1.036a2.625 2.625 0 00-1.91-1.91l-1.036-.258a.75.75 0 010-1.456l1.036-.258a2.625 2.625 0 001.91-1.91l.258-1.036A.75.75 0 0118 1.5zM16.5 15a.75.75 0 01.712.513l.394 1.183c.15.447.5.799.948.948l1.183.395a.75.75 0 010 1.422l-1.183.395c-.447.15-.799.5-.948.948l-.395 1.183a.75.75 0 01-1.422 0l-.395-1.183a1.5 1.5 0 00-.948-.948l-1.183-.395a.75.75 0 010-1.422l1.183-.395c.447-.15.799-.5.948-.948l.395-1.183A.75.75 0 0116.5 15z" clip-rule="evenodd" />
-                                </svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%"><path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.375-2.212.749-2.305l5.404-.433 2.082-5.006z" clip-rule="evenodd" /></svg>
                             </span>
                             兴奋 🤩
                         </span>
                         <span class="mood-tag" data-mood="confused">
                             <span class="mood-icon-svg" style="display: inline-flex; align-items: center; justify-content: center; width: 1.2em; height: 1.2em; margin-right: 4px; color: #EF476F;">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%">
-                                    <path fill-rule="evenodd" d="M9 4.5a.75.75 0 01.721.544l.813 2.846a3.75 3.75 0 002.576 2.576l2.846.813a.75.75 0 010 1.442l-2.846.813a3.75 3.75 0 00-2.576 2.576l-.813 2.846a.75.75 0 01-1.442 0l-.813-2.846a3.75 3.75 0 00-2.576-2.576l-2.846-.813a.75.75 0 010-1.442l2.846-.813a3.75 3.75 0 002.576-2.576L8.279 5.044A.75.75 0 019 4.5zM18 1.5a.75.75 0 01.728.568l.258 1.036c.236.94.97 1.674 1.91 1.91l1.036.258a.75.75 0 010 1.456l-1.036.258c-.94.236-1.674.97-1.91 1.91l-.258 1.036a.75.75 0 01-1.456 0l-.258-1.036a2.625 2.625 0 00-1.91-1.91l-1.036-.258a.75.75 0 010-1.456l1.036-.258a2.625 2.625 0 001.91-1.91l.258-1.036A.75.75 0 0118 1.5zM16.5 15a.75.75 0 01.712.513l.394 1.183c.15.447.5.799.948.948l1.183.395a.75.75 0 010 1.422l-1.183.395c-.447.15-.799.5-.948.948l-.395 1.183a.75.75 0 01-1.422 0l-.395-1.183a1.5 1.5 0 00-.948-.948l-1.183-.395a.75.75 0 010-1.422l1.183-.395c.447-.15.799-.5.948-.948l.395-1.183A.75.75 0 0116.5 15z" clip-rule="evenodd" />
-                                </svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%"><path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.375-2.212.749-2.305l5.404-.433 2.082-5.006z" clip-rule="evenodd" /></svg>
                             </span>
                             困惑 😵
                         </span>
                         <span class="mood-tag" data-mood="scared">
                             <span class="mood-icon-svg" style="display: inline-flex; align-items: center; justify-content: center; width: 1.2em; height: 1.2em; margin-right: 4px; color: #9B89B3;">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%">
-                                    <path fill-rule="evenodd" d="M9 4.5a.75.75 0 01.721.544l.813 2.846a3.75 3.75 0 002.576 2.576l2.846.813a.75.75 0 010 1.442l-2.846.813a3.75 3.75 0 00-2.576 2.576l-.813 2.846a.75.75 0 01-1.442 0l-.813-2.846a3.75 3.75 0 00-2.576-2.576l-2.846-.813a.75.75 0 010-1.442l2.846-.813a3.75 3.75 0 002.576-2.576L8.279 5.044A.75.75 0 019 4.5zM18 1.5a.75.75 0 01.728.568l.258 1.036c.236.94.97 1.674 1.91 1.91l1.036.258a.75.75 0 010 1.456l-1.036.258c-.94.236-1.674.97-1.91 1.91l-.258 1.036a.75.75 0 01-1.456 0l-.258-1.036a2.625 2.625 0 00-1.91-1.91l-1.036-.258a.75.75 0 010-1.456l1.036-.258a2.625 2.625 0 001.91-1.91l.258-1.036A.75.75 0 0118 1.5zM16.5 15a.75.75 0 01.712.513l.394 1.183c.15.447.5.799.948.948l1.183.395a.75.75 0 010 1.422l-1.183.395c-.447.15-.799.5-.948.948l-.395 1.183a.75.75 0 01-1.422 0l-.395-1.183a1.5 1.5 0 00-.948-.948l-1.183-.395a.75.75 0 010-1.422l1.183-.395c.447-.15.799-.5.948-.948l.395-1.183A.75.75 0 0116.5 15z" clip-rule="evenodd" />
-                                </svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%"><path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.375-2.212.749-2.305l5.404-.433 2.082-5.006z" clip-rule="evenodd" /></svg>
                             </span>
                             恐惧 😱
                         </span>
@@ -314,16 +295,13 @@
                 </div>
 
                 <!-- 内容输入 -->
-                <textarea id="dream-input" placeholder="描述你今天的梦境... 
-时间、地点、人物、发生了什么？"></textarea>
+                <textarea id="dream-input" placeholder="描述你今天的梦境...&#10;时间、地点、人物、发生了什么？"></textarea>
 
                 <!-- 标签输入 -->
                 <div class="form-group">
                     <label class="form-label">标签</label>
                     <div class="tag-input-container">
-                        <div id="tags-container" class="tags-list">
-                            <!-- 动态生成的标签气泡 -->
-                        </div>
+                        <div id="tags-container" class="tags-list"></div>
                         <input type="text" id="tag-input" placeholder="输入标签按空格生成 (如: 噩梦)">
                         <button id="add-tag-btn" type="button" class="add-tag-btn" aria-label="添加标签">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -347,9 +325,7 @@
                     <input type="datetime-local" id="edit-date" class="edit-mode-el hidden" style="border: 1px solid var(--border-color); background: var(--card-bg); padding: 4px; border-radius: 8px; font-family: inherit;">
                 </div>
                 <div class="header-buttons" style="display: flex; gap: 10px; align-items: center;">
-                    <button id="edit-entry-btn" class="icon-btn edit-btn" aria-label="编辑">
-                        ✏️
-                    </button>
+                    <button id="edit-entry-btn" class="icon-btn edit-btn" aria-label="编辑">✏️</button>
                     <button id="close-detail-btn" class="close-btn">×</button>
                 </div>
             </div>
@@ -372,27 +348,16 @@
                     <div class="form-group">
                         <label class="form-label">类型</label>
                         <div class="type-selector">
-                            <label class="type-option">
-                                <input type="radio" name="edit-entry-type" value="dream">
-                                <span>🌙 梦境</span>
-                            </label>
-                            <label class="type-option">
-                                <input type="radio" name="edit-entry-type" value="diary">
-                                <span>📖 日记</span>
-                            </label>
-                            <label class="type-option">
-                                <input type="radio" name="edit-entry-type" value="os">
-                                <span>💭 内心OS</span>
-                            </label>
+                            <label class="type-option"><input type="radio" name="edit-entry-type" value="dream"><span>🌙 梦境</span></label>
+                            <label class="type-option"><input type="radio" name="edit-entry-type" value="diary"><span>📖 日记</span></label>
+                            <label class="type-option"><input type="radio" name="edit-entry-type" value="os"><span>💭 内心OS</span></label>
                         </div>
                     </div>
 
-                    <!-- 情绪选择 (动态生成或静态) -->
+                    <!-- 情绪选择 -->
                     <div class="form-group">
                         <label class="form-label">情绪</label>
-                        <div id="edit-mood-selector" class="mood-selector">
-                           <!-- JS 将复制现有的 mood-selector 内容到这里 -->
-                        </div>
+                        <div id="edit-mood-selector" class="mood-selector"></div>
                     </div>
 
                     <!-- 正文编辑 -->
@@ -425,19 +390,14 @@
                 <button id="close-add-mood-btn" class="close-btn">×</button>
             </div>
             <div class="modal-body" style="flex: 1; display: flex; flex-direction: column; gap: 1rem;">
-                <!-- 情绪名称 -->
                 <div class="form-group">
                     <label class="form-label">名称</label>
                     <input type="text" id="new-mood-input" placeholder="例如: 疲惫" class="form-input" style="padding: 10px; border-radius: 12px; border: 1px solid var(--border-color); font-family: inherit;">
                 </div>
-                
-                <!-- Emoji 选择 -->
                 <div class="form-group">
                     <label class="form-label">Emoji 图标</label>
                     <input type="text" id="new-mood-emoji" placeholder="例如: 😫" class="form-input" style="padding: 10px; border-radius: 12px; border: 1px solid var(--border-color); font-family: inherit; width: 100px; text-align: center; font-size: 1.2rem;">
                 </div>
-
-                <!-- 颜色选择 -->
                 <div class="form-group">
                     <label class="form-label">代表色</label>
                     <div style="display: flex; gap: 10px; align-items: center;">
@@ -445,7 +405,6 @@
                         <span id="color-preview-text" style="color: var(--text-secondary); font-size: 0.9rem;">#a18cd1</span>
                     </div>
                 </div>
-
                 <div class="form-actions" style="display: flex; gap: 10px; margin-top: 10px;">
                     <button id="cancel-add-mood-btn" class="secondary-btn" style="flex: 1; padding: 10px; border-radius: 20px; border: 1px solid var(--border-color); background: transparent; cursor: pointer;">取消</button>
                     <button id="confirm-add-mood-btn" class="primary-btn" style="flex: 1; margin-top: 0;">确认</button>
@@ -490,6 +449,10 @@
         </button>
     </nav>
 
+    <!-- 错误/提示消息容器 (Toast) -->
+    <div id="toast-container" class="toast-container"></div>
+
     <script src="script.js"></script>
 </body>
 </html>
+

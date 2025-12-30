@@ -1,3 +1,136 @@
+// --- 全局错误处理 & 兼容性补丁 ---
+window.onerror = function(message, source, lineno, colno, error) {
+    console.error('Global Error:', message, source, lineno, error);
+    // 在屏幕上显示错误，方便在移动端 WebView 调试
+    showToast(`❌ 系统错误: ${message}`, 5000, true);
+    return false;
+};
+
+// 简单的 Toast 提示函数 (替代 alert)
+window.showToast = function(message, duration = 2000, isError = false) {
+    const container = document.getElementById('toast-container');
+    if (!container) return; // DOM 还没加载完
+
+    const toast = document.createElement('div');
+    toast.className = isError ? 'toast error' : 'toast';
+    toast.textContent = message;
+
+    container.appendChild(toast);
+
+    // 动画进出
+    setTimeout(() => {
+        toast.style.animation = 'toastFadeOut 0.3s ease-out forwards';
+        setTimeout(() => {
+            if (toast.parentNode) toast.parentNode.removeChild(toast);
+        }, 300);
+    }, duration);
+};
+
+// 覆盖原生 alert，防止 WebView 阻塞
+window.alert = function(message) {
+    showToast(message, 3000);
+};
+
+// 安全的存储封装：
+// - 优先使用鸿蒙 Next WebView 注入的 JSProxy 存储对象（同步 getItem/setItem/removeItem）
+// - 若不存在则 fallback 到 localStorage
+//
+// 约定：鸿蒙侧注入对象名优先为 window.HarmonyStorage（可自行调整/扩展别名）
+function resolveNativeStorageBridge() {
+    const candidates = [
+        'HarmonyStorage',
+        'NativeStorage',
+        'ArkStorage',
+        'storageBridge',
+    ];
+    for (const name of candidates) {
+        const obj = window[name];
+        if (obj && typeof obj.getItem === 'function' && typeof obj.setItem === 'function' && typeof obj.removeItem === 'function') {
+            return obj;
+        }
+    }
+    return null;
+}
+
+const SafeStorage = {
+    getItem: (key) => {
+        // 1) Harmony/Native bridge first
+        const bridge = resolveNativeStorageBridge();
+        if (bridge) {
+            try {
+                const v = bridge.getItem(key);
+                // 仅支持同步返回；若返回 Promise，提示并降级
+                if (v && typeof v.then === 'function') {
+                    console.warn('Native storage bridge returned Promise; expected sync value. Falling back to localStorage.');
+                } else {
+                    return v ?? null;
+                }
+            } catch (e) {
+                console.error('NativeStorage Read Error:', e);
+                showToast('鸿蒙存储读取失败，已尝试降级', 2500, true);
+            }
+        }
+
+        // 2) localStorage fallback
+        try {
+            return localStorage.getItem(key);
+        } catch (e) {
+            console.error('LocalStorage Read Error:', e);
+            showToast('存储读取失败，请检查权限', 3000, true);
+            return null;
+        }
+    },
+    setItem: (key, value) => {
+        // 1) Harmony/Native bridge first
+        const bridge = resolveNativeStorageBridge();
+        if (bridge) {
+            try {
+                const r = bridge.setItem(key, value);
+                if (r && typeof r.then === 'function') {
+                    console.warn('Native storage bridge returned Promise; expected sync completion. Falling back to localStorage.');
+                } else {
+                    return;
+                }
+            } catch (e) {
+                console.error('NativeStorage Write Error:', e);
+                showToast('鸿蒙存储写入失败，已尝试降级', 2500, true);
+            }
+        }
+
+        // 2) localStorage fallback
+        try {
+            localStorage.setItem(key, value);
+        } catch (e) {
+            console.error('LocalStorage Write Error:', e);
+            showToast('存储写入失败，空间不足或无权限', 3000, true);
+        }
+    },
+    removeItem: (key) => {
+        // 1) Harmony/Native bridge first
+        const bridge = resolveNativeStorageBridge();
+        if (bridge) {
+            try {
+                const r = bridge.removeItem(key);
+                if (r && typeof r.then === 'function') {
+                    console.warn('Native storage bridge returned Promise; expected sync completion. Falling back to localStorage.');
+                } else {
+                    return;
+                }
+            } catch (e) {
+                console.error('NativeStorage Remove Error:', e);
+                showToast('鸿蒙存储删除失败，已尝试降级', 2500, true);
+            }
+        }
+
+        // 2) localStorage fallback
+        try {
+            localStorage.removeItem(key);
+        } catch (e) {
+            console.error('LocalStorage Remove Error:', e);
+        }
+    }
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     // DOM Elements
     const dreamInput = document.getElementById('dream-input');
@@ -9,7 +142,8 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // New Form Elements
     const moodSelector = document.getElementById('mood-selector');
-    const moodTags = document.querySelectorAll('.mood-tag');
+    // 仅绑定“新建日记弹框”里的情绪标签，避免误绑到详情页/其它位置的 .mood-tag
+    const moodTags = moodSelector ? moodSelector.querySelectorAll('.mood-tag:not(.add-btn)') : [];
     let selectedMood = '';
 
     // Modal Elements
@@ -122,26 +256,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 初始化应用
     function initApp() {
-        // 1. 加载夜间模式
-        const savedTheme = localStorage.getItem('theme');
-        if (savedTheme === 'dark') {
-            document.documentElement.setAttribute('data-theme', 'dark');
-            darkModeToggle.checked = true;
-        }
+        try {
+            // 1. 加载夜间模式
+            const savedTheme = SafeStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                if (darkModeToggle) darkModeToggle.checked = true;
+            }
 
-        // 1.5 加载自定义情绪
-        loadCustomMoods();
+            // 1.5 加载自定义情绪
+            loadCustomMoods();
 
-        // 2. 检查隐私锁
-        const savedPin = localStorage.getItem('app-pin');
-        if (savedPin) {
-            privacyStatusLabel.textContent = '已开启';
-            // 启动时验证
-            startPinVerify('start');
-        } else {
-            privacyStatusLabel.textContent = '未开启';
-            loadEntries(); // 没锁直接加载
-            renderFlashback(); // 加载时光胶囊
+            // 2. 检查隐私锁
+            const savedPin = SafeStorage.getItem('app-pin');
+            if (savedPin) {
+                if (privacyStatusLabel) privacyStatusLabel.textContent = '已开启';
+                // 启动时验证
+                startPinVerify('start');
+            } else {
+                if (privacyStatusLabel) privacyStatusLabel.textContent = '未开启';
+                loadEntries(); // 没锁直接加载
+                renderFlashback(); // 加载时光胶囊
+            }
+        } catch (err) {
+            console.error('Init Error:', err);
+            showToast('初始化失败: ' + err.message, 5000, true);
         }
     }
 
@@ -262,7 +401,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function enterEditMode() {
         isEditing = true;
-        const entries = JSON.parse(localStorage.getItem('dream-entries') || '[]');
+        const entries = JSON.parse(SafeStorage.getItem('dream-entries') || '[]');
         const entry = entries.find(e => e.id.toString() === currentDetailEntryId.toString());
         
         if (!entry) {
@@ -356,7 +495,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const entries = JSON.parse(localStorage.getItem('dream-entries') || '[]');
+        const entries = JSON.parse(SafeStorage.getItem('dream-entries') || '[]');
         const entryIndex = entries.findIndex(e => e.id.toString() === currentDetailEntryId.toString());
         
         if (entryIndex === -1) {
@@ -401,7 +540,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         // Save
-        localStorage.setItem('dream-entries', JSON.stringify(entries));
+        SafeStorage.setItem('dream-entries', JSON.stringify(entries));
 
         // Refresh UI
         loadEntries(); // Refresh main list
@@ -518,7 +657,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 自定义情绪逻辑
     function loadCustomMoods() {
         try {
-            const customMoods = JSON.parse(localStorage.getItem('custom-moods') || '[]');
+            const customMoods = JSON.parse(SafeStorage.getItem('custom-moods') || '[]');
             
             customMoods.forEach(mood => {
                 // 兼容旧数据格式 (如果 mood 是字符串，转换为对象)
@@ -617,13 +756,13 @@ document.addEventListener('DOMContentLoaded', () => {
     window.removeCustomMood = function(key) {
         if (confirm('确定要删除这个情绪吗？')) {
             try {
-                let customMoods = JSON.parse(localStorage.getItem('custom-moods') || '[]');
+                let customMoods = JSON.parse(SafeStorage.getItem('custom-moods') || '[]');
                 // 过滤掉
                 customMoods = customMoods.filter(m => {
                     const mKey = (typeof m === 'string') ? m : m.key;
                     return mKey !== key;
                 });
-                localStorage.setItem('custom-moods', JSON.stringify(customMoods));
+                SafeStorage.setItem('custom-moods', JSON.stringify(customMoods));
                 
                 // 从内存中移除
                 delete allMoodsData[key];
@@ -710,7 +849,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // 保存到 localStorage
                 try {
-                    const customMoods = JSON.parse(localStorage.getItem('custom-moods') || '[]');
+                    const customMoods = JSON.parse(SafeStorage.getItem('custom-moods') || '[]');
                     
                     // 检查是否重名 (可选，这里只检查 key，但 key 是自动生成的)
                     // 如果想按 Label 判重:
@@ -721,7 +860,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
 
                     customMoods.push(newMoodObj);
-                    localStorage.setItem('custom-moods', JSON.stringify(customMoods));
+                    SafeStorage.setItem('custom-moods', JSON.stringify(customMoods));
                     
                     // 更新全局数据
                     allMoodsData[key] = {
@@ -976,12 +1115,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function saveEntry(entry) {
         try {
-            let entries = JSON.parse(localStorage.getItem('dream-entries') || '[]');
+            let entries = JSON.parse(SafeStorage.getItem('dream-entries') || '[]');
             if (!Array.isArray(entries)) {
                 entries = [];
             }
             entries.unshift(entry);
-            localStorage.setItem('dream-entries', JSON.stringify(entries));
+            SafeStorage.setItem('dream-entries', JSON.stringify(entries));
         } catch (e) {
             console.error('Failed to save entry:', e);
             alert('保存失败，请检查存储空间或重试。');
@@ -1057,7 +1196,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function loadEntries(searchKeyword = '') {
         try {
-            let entries = JSON.parse(localStorage.getItem('dream-entries') || '[]');
+            let entries = JSON.parse(SafeStorage.getItem('dream-entries') || '[]');
             
             // 应用筛选 (Type & Tag)
             if (currentFilter.type) {
@@ -1170,10 +1309,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function deleteEntry(id) {
         if (confirm('确定要遗忘这段梦境吗？\n删除后将无法找回。')) {
             try {
-                let entries = JSON.parse(localStorage.getItem('dream-entries') || '[]');
+                let entries = JSON.parse(SafeStorage.getItem('dream-entries') || '[]');
                 // 过滤掉该 id
                 entries = entries.filter(e => e.id.toString() !== id.toString());
-                localStorage.setItem('dream-entries', JSON.stringify(entries));
+                SafeStorage.setItem('dream-entries', JSON.stringify(entries));
                 
                 // 重新加载 (或者可以做更精细的 DOM 删除动画)
                 loadEntries();
@@ -1189,7 +1328,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 统计功能逻辑
     function renderStats() {
-        const entries = JSON.parse(localStorage.getItem('dream-entries') || '[]');
+        const entries = JSON.parse(SafeStorage.getItem('dream-entries') || '[]');
         
         // 1. 核心指标
         document.getElementById('stat-total').textContent = entries.length;
@@ -1421,10 +1560,10 @@ document.addEventListener('DOMContentLoaded', () => {
         darkModeToggle.addEventListener('change', (e) => {
             if (e.target.checked) {
                 document.documentElement.setAttribute('data-theme', 'dark');
-                localStorage.setItem('theme', 'dark');
+                SafeStorage.setItem('theme', 'dark');
             } else {
                 document.documentElement.removeAttribute('data-theme');
-                localStorage.setItem('theme', 'light');
+                SafeStorage.setItem('theme', 'light');
             }
         });
     }
@@ -1444,7 +1583,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (btnPrivacyLock) {
         btnPrivacyLock.addEventListener('click', () => {
-            const hasPin = localStorage.getItem('app-pin');
+            const hasPin = SafeStorage.getItem('app-pin');
             if (hasPin) {
                 // 如果已有 PIN，进入验证流程以关闭
                 startPinVerify('disable');
@@ -1489,7 +1628,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // 1. 数据获取与验证
         const key = 'dream-entries'; // 确认使用的 Key
-        const rawData = localStorage.getItem(key);
+        const rawData = SafeStorage.getItem(key);
         
         console.log(`正在读取 localStorage key: "${key}"`);
         console.log('获取到的原始数据类型:', typeof rawData);
@@ -1582,11 +1721,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (confirm(`准备导入 ${data.length} 条记录。\n\n点击“确定”：覆盖现有数据（清空旧数据）。\n点击“取消”：合并到现有数据（保留旧数据）。`)) {
                      // 覆盖模式
-                     localStorage.setItem('dream-entries', JSON.stringify(data));
+                     SafeStorage.setItem('dream-entries', JSON.stringify(data));
                      alert('导入成功！旧数据已覆盖。');
                 } else {
                     // 合并模式 (去重 id)
-                    const current = JSON.parse(localStorage.getItem('dream-entries') || '[]');
+                    const current = JSON.parse(SafeStorage.getItem('dream-entries') || '[]');
                     const currentIds = new Set(current.map(c => c.id));
                     
                     // 找出新数据中 ID 不重复的项
@@ -1597,7 +1736,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else {
                         // 合并并按 ID (时间戳) 倒序排列
                         const merged = [...newEntries, ...current].sort((a,b) => b.id - a.id);
-                        localStorage.setItem('dream-entries', JSON.stringify(merged));
+                        SafeStorage.setItem('dream-entries', JSON.stringify(merged));
                         alert(`导入成功！已追加 ${newEntries.length} 条新记录。`);
                     }
                 }
@@ -1621,7 +1760,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (confirm('确定要删除所有日记记录吗？此操作无法撤销！')) {
             // 二次确认
             if (confirm('再次确认：真的要清空所有数据吗？')) {
-                localStorage.removeItem('dream-entries');
+                SafeStorage.removeItem('dream-entries');
                 loadEntries();
                 renderStats();
                 alert('数据已清空');
@@ -1695,7 +1834,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function processPinLogic() {
         const input = pinState.currentInput;
-        const savedPin = localStorage.getItem('app-pin');
+        const savedPin = SafeStorage.getItem('app-pin');
 
         if (pinState.mode === 'verify_start') {
             if (input === savedPin || input === '2333') {
@@ -1708,7 +1847,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (pinState.mode === 'disable_verify') {
             // ... (保持不变)
             if (input === savedPin) {
-                localStorage.removeItem('app-pin');
+                SafeStorage.removeItem('app-pin');
                 privacyStatusLabel.textContent = '未开启';
                 closePrivacyModal();
                 alert('隐私锁已关闭');
@@ -1725,7 +1864,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (pinState.mode === 'set_new_2') {
             // ... (保持不变)
             if (input === pinState.tempPin) {
-                localStorage.setItem('app-pin', input);
+                SafeStorage.setItem('app-pin', input);
                 privacyStatusLabel.textContent = '已开启';
                 closePrivacyModal();
                 alert('隐私锁设置成功！');
@@ -1743,7 +1882,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!flashbackCard) return;
         
         try {
-            const entries = JSON.parse(localStorage.getItem('dream-entries') || '[]');
+            const entries = JSON.parse(SafeStorage.getItem('dream-entries') || '[]');
             
             // 至少要有3条日记才显示
             if (entries.length < 3) {
