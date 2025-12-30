@@ -56,6 +56,7 @@ async function showConfirmChoice(options) {
         cancelText = '取消',
         dangerous = false,
         backdropClosable = true,
+        hideCancel = false,
     } = options || {};
 
     titleEl.textContent = title;
@@ -63,6 +64,8 @@ async function showConfirmChoice(options) {
     btnOk.textContent = confirmText;
     btnCancel.textContent = cancelText;
     btnOk.classList.toggle('danger', !!dangerous);
+    const prevCancelDisplay = btnCancel.style.display;
+    btnCancel.style.display = hideCancel ? 'none' : prevCancelDisplay;
 
     overlay.classList.add('active');
     overlay.setAttribute('aria-hidden', 'false');
@@ -96,6 +99,7 @@ async function showConfirmChoice(options) {
             btnClose.removeEventListener('click', onClose);
             overlay.removeEventListener('click', onBackdrop);
             document.removeEventListener('keydown', onKey);
+            btnCancel.style.display = prevCancelDisplay;
         }
 
         btnOk.addEventListener('click', onOk);
@@ -1808,7 +1812,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Functions for Settings
-    function exportData() {
+    async function exportData() {
         console.log('=== 开始执行导出流程 ===');
         
         // 1. 数据获取与验证
@@ -1847,36 +1851,61 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            // 2. 生成 Data URI (关键兼容性修改)
-            // 使用 unescape + encodeURIComponent 解决中文乱码问题
+            // 2) 生成文件内容（UTF-8），用 Blob 避免中文乱码 & 避免超长 dataURI
             const jsonString = JSON.stringify(parsedData, null, 2);
-            const base64Content = btoa(unescape(encodeURIComponent(jsonString)));
-            const dataUri = 'data:application/json;base64,' + base64Content;
-            
-            console.log('生成的 Data URI 长度:', dataUri.length);
-            console.log('生成的 Data URI 前100个字符:', dataUri.substring(0, 100));
+            const blob = new Blob([jsonString], { type: 'application/json;charset=utf-8' });
 
-            // 3. 触发下载
-            // 生成文件名: dream_diary_backup_YYYYMMDD_HHMMSS.json
+            // 3) 生成文件名: dream_diary_backup_YYYYMMDD_HHMMSS.json
             const now = new Date();
             const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
             const timeStr = now.toTimeString().slice(0, 8).replace(/:/g, '');
             const filename = `dream_diary_backup_${dateStr}_${timeStr}.json`;
-            
-            console.log('准备下载文件:', filename);
 
+            // 4) 优先：支持 File System Access API 的环境可弹出“保存到…”选择器
+            // 注意：Android/Harmony 的 App WebView 大多不支持该 API；会走下面的下载兜底。
+            if (window.showSaveFilePicker) {
+                try {
+                    const handle = await window.showSaveFilePicker({
+                        suggestedName: filename,
+                        types: [
+                            {
+                                description: 'JSON 备份文件',
+                                accept: { 'application/json': ['.json'] }
+                            }
+                        ]
+                    });
+                    const writable = await handle.createWritable();
+                    await writable.write(blob);
+                    await writable.close();
+                    alert('导出成功：已保存到你选择的位置');
+                    return;
+                } catch (e) {
+                    // 用户取消/或 WebView 不允许：降级到下载
+                    console.warn('showSaveFilePicker failed, fallback to download:', e);
+                }
+            }
+
+            // 5) 兜底：触发浏览器下载（目录由系统/宿主 WebView 决定，通常在“下载/Downloads”）
+            const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = dataUri;
+            a.href = url;
             a.download = filename;
-            a.style.display = 'none'; // 隐藏元素
-            
+            a.rel = 'noopener';
+            a.style.display = 'none';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-            
-            console.log('=== 导出操作已触发 ===');
-            // 考虑到部分安卓 WebView 下载后可能不会自动提示，给个 Alert
-            // alert('已触发下载，请检查下载管理器');
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+            console.log('=== 导出操作已触发（download fallback） ===');
+            await showConfirmChoice({
+                title: '导出成功',
+                message:
+                    `\n\n文件名：${filename}\n\n保存位置：默认在“下载/Downloads”。\n如果没有看到，请打开系统“下载管理器”或“文件管理-下载”查看。`,
+                confirmText: '知道了',
+                hideCancel: true,
+                backdropClosable: true,
+            });
         } catch (e) {
             console.error('导出过程中发生异常:', e);
             alert('导出发生错误: ' + e.message);
