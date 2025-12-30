@@ -446,6 +446,23 @@
     <!-- 错误/提示消息容器 (Toast) -->
     <div id="toast-container" class="toast-container"></div>
 
+    <!-- 通用确认弹框：替代 WebView 里可能被禁用的 confirm() -->
+    <div id="modal-confirm" class="modal-overlay" aria-hidden="true">
+        <div class="modal-content" style="height: auto; min-height: 220px;">
+            <div class="modal-header">
+                <h3 id="confirm-title">提示</h3>
+                <button id="confirm-close-btn" class="close-btn" aria-label="关闭">×</button>
+            </div>
+            <div class="modal-body" style="justify-content: center; align-items: stretch;">
+                <p id="confirm-message" class="confirm-message"></p>
+                <div class="confirm-actions" style="display: flex; gap: 10px; margin-top: 12px;">
+                    <button id="confirm-cancel-btn" class="secondary-btn" style="flex: 1; padding: 10px; border-radius: 20px; border: 1px solid var(--border-color); background: transparent; cursor: pointer;">取消</button>
+                    <button id="confirm-ok-btn" class="primary-btn" style="flex: 1; margin-top: 0;">确定</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>

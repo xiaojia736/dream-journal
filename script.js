@@ -31,6 +31,81 @@ window.alert = function(message) {
     showToast(message, 3000);
 };
 
+// 自定义确认弹框（替代 WebView 里可能被禁用的 confirm()）
+// 返回值：'confirm' | 'cancel' | 'dismiss'
+async function showConfirmChoice(options) {
+    const overlay = document.getElementById('modal-confirm');
+    const titleEl = document.getElementById('confirm-title');
+    const msgEl = document.getElementById('confirm-message');
+    const btnOk = document.getElementById('confirm-ok-btn');
+    const btnCancel = document.getElementById('confirm-cancel-btn');
+    const btnClose = document.getElementById('confirm-close-btn');
+
+    // DOM 未就绪时兜底：尽量不阻塞（鸿蒙 Next 下原生 confirm 可能无效）
+    if (!overlay || !titleEl || !msgEl || !btnOk || !btnCancel || !btnClose) {
+        console.warn('Confirm modal DOM not found, fallback to native confirm.');
+        // eslint-disable-next-line no-alert
+        const ok = confirm(options?.message || '确认继续？');
+        return ok ? 'confirm' : 'cancel';
+    }
+
+    const {
+        title = '提示',
+        message = '',
+        confirmText = '确定',
+        cancelText = '取消',
+        dangerous = false,
+        backdropClosable = true,
+    } = options || {};
+
+    titleEl.textContent = title;
+    msgEl.textContent = message;
+    btnOk.textContent = confirmText;
+    btnCancel.textContent = cancelText;
+    btnOk.classList.toggle('danger', !!dangerous);
+
+    overlay.classList.add('active');
+    overlay.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+
+    return await new Promise((resolve) => {
+        let settled = false;
+        const settle = (result) => {
+            if (settled) return;
+            settled = true;
+            overlay.classList.remove('active');
+            overlay.setAttribute('aria-hidden', 'true');
+            document.body.style.overflow = '';
+            cleanup();
+            resolve(result);
+        };
+
+        const onOk = () => settle('confirm');
+        const onCancel = () => settle('cancel');
+        const onClose = () => settle('dismiss');
+        const onBackdrop = (e) => {
+            if (backdropClosable && e.target === overlay) settle('dismiss');
+        };
+        const onKey = (e) => {
+            if (e.key === 'Escape') settle('dismiss');
+        };
+
+        function cleanup() {
+            btnOk.removeEventListener('click', onOk);
+            btnCancel.removeEventListener('click', onCancel);
+            btnClose.removeEventListener('click', onClose);
+            overlay.removeEventListener('click', onBackdrop);
+            document.removeEventListener('keydown', onKey);
+        }
+
+        btnOk.addEventListener('click', onOk);
+        btnCancel.addEventListener('click', onCancel);
+        btnClose.addEventListener('click', onClose);
+        overlay.addEventListener('click', onBackdrop);
+        document.addEventListener('keydown', onKey);
+    });
+}
+
 // 安全的存储封装：
 // - 优先使用鸿蒙 Next WebView 注入的 JSProxy 存储对象（同步 getItem/setItem/removeItem）
 // - 若不存在则 fallback 到 localStorage
@@ -334,10 +409,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (cancelEditBtn) {
-        cancelEditBtn.addEventListener('click', () => {
-            if (confirm('确定要放弃修改吗？')) {
-                exitEditMode();
-            }
+        cancelEditBtn.addEventListener('click', async () => {
+            const r = await showConfirmChoice({
+                title: '放弃修改？',
+                message: '确定要放弃修改吗？',
+                confirmText: '放弃',
+                cancelText: '继续编辑',
+                dangerous: true,
+            });
+            if (r === 'confirm') exitEditMode();
         });
     }
 
@@ -574,11 +654,16 @@ document.addEventListener('DOMContentLoaded', () => {
         filterInfo.textContent = `正在查看标签: ${tag}`;
     };
 
-    function closeDetailModal() {
+    async function closeDetailModal() {
         if (isEditing) {
-            if (!confirm('修改未保存，确定要关闭吗？')) {
-                return;
-            }
+            const r = await showConfirmChoice({
+                title: '关闭详情？',
+                message: '修改未保存，确定要关闭吗？',
+                confirmText: '关闭',
+                cancelText: '继续编辑',
+                dangerous: true,
+            });
+            if (r !== 'confirm') return;
             exitEditMode(); // Reset state
         }
         modalDetail.classList.remove('active');
@@ -586,13 +671,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (closeDetailBtn) {
-        closeDetailBtn.addEventListener('click', closeDetailModal);
+        closeDetailBtn.addEventListener('click', () => { void closeDetailModal(); });
     }
 
     // 点击遮罩层关闭详情
     modalDetail.addEventListener('click', (e) => {
         if (e.target === modalDetail) {
-            closeDetailModal();
+            void closeDetailModal();
         }
     });
 
@@ -762,7 +847,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 删除自定义情绪
     window.removeCustomMood = function(key) {
-        if (confirm('确定要删除这个情绪吗？')) {
+        (async () => {
+            const r = await showConfirmChoice({
+                title: '删除情绪？',
+                message: '确定要删除这个情绪吗？',
+                confirmText: '删除',
+                cancelText: '取消',
+                dangerous: true,
+            });
+            if (r !== 'confirm') return;
+
             try {
                 let customMoods = JSON.parse(SafeStorage.getItem('custom-moods') || '[]');
                 // 过滤掉
@@ -787,7 +881,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (e) {
                 console.error('Failed to remove mood', e);
             }
-        }
+        })();
     };
 
     function openAddMoodModal() {
@@ -1389,7 +1483,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 删除逻辑
     function deleteEntry(id) {
-        if (confirm('确定要遗忘这段梦境吗？\n删除后将无法找回。')) {
+        (async () => {
+            const r = await showConfirmChoice({
+                title: '确认删除？',
+                message: '确定要遗忘这段梦境吗？\n删除后将无法找回。',
+                confirmText: '删除',
+                cancelText: '取消',
+                dangerous: true,
+            });
+            if (r !== 'confirm') return;
+
             try {
                 let entries = JSON.parse(SafeStorage.getItem('dream-entries') || '[]');
                 // 过滤掉该 id
@@ -1405,7 +1508,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error('Delete failed:', e);
                 alert('删除失败，请重试');
             }
-        }
+        })();
     }
 
     // 统计功能逻辑
@@ -1785,7 +1888,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = (event) => {
+        reader.onload = async (event) => {
             try {
                 const data = JSON.parse(event.target.result);
                 
@@ -1801,7 +1904,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
-                if (confirm(`准备导入 ${data.length} 条记录。\n\n点击“确定”：覆盖现有数据（清空旧数据）。\n点击“取消”：合并到现有数据（保留旧数据）。`)) {
+                const choice = await showConfirmChoice({
+                    title: '导入方式',
+                    message: `准备导入 ${data.length} 条记录。\n\n选择“覆盖”：清空旧数据并导入。\n选择“合并”：保留旧数据并追加去重。`,
+                    confirmText: '覆盖',
+                    cancelText: '合并',
+                    dangerous: true,
+                    backdropClosable: false,
+                });
+
+                if (choice === 'dismiss') {
+                    alert('已取消导入');
+                    return;
+                }
+
+                if (choice === 'confirm') {
                      // 覆盖模式
                      SafeStorage.setItem('dream-entries', JSON.stringify(data));
                      alert('导入成功！旧数据已覆盖。');
@@ -1839,15 +1956,31 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function clearAllData() {
-        if (confirm('确定要删除所有日记记录吗？此操作无法撤销！')) {
-            // 二次确认
-            if (confirm('再次确认：真的要清空所有数据吗？')) {
-                SafeStorage.removeItem('dream-entries');
-                loadEntries();
-                renderStats();
-                alert('数据已清空');
-            }
-        }
+        (async () => {
+            const r1 = await showConfirmChoice({
+                title: '清空数据？',
+                message: '确定要删除所有日记记录吗？此操作无法撤销！',
+                confirmText: '继续',
+                cancelText: '取消',
+                dangerous: true,
+            });
+            if (r1 !== 'confirm') return;
+
+            const r2 = await showConfirmChoice({
+                title: '再次确认',
+                message: '再次确认：真的要清空所有数据吗？',
+                confirmText: '清空',
+                cancelText: '取消',
+                dangerous: true,
+                backdropClosable: false,
+            });
+            if (r2 !== 'confirm') return;
+
+            SafeStorage.removeItem('dream-entries');
+            loadEntries();
+            renderStats();
+            alert('数据已清空');
+        })();
     }
 
     // Privacy Functions
