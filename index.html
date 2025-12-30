@@ -19,7 +19,7 @@
 <body>
     <!-- 顶部标题栏 -->
     <header class="app-header">
-        <h1>梦境日记</h1>
+        <h1 id="app-title">星海日记</h1>
     </header>
 
     <!-- 主内容区域 -->
@@ -61,11 +61,6 @@
         <!-- 视图：统计 -->
         <div id="view-stats" class="view-section" style="display: none;">
             <div class="stats-container">
-                <div class="stats-header">
-                    <h2>梦境数据</h2>
-                    <p>探索你的潜意识地图</p>
-                </div>
-
                 <!-- 核心指标 - 情感化卡片 -->
                 <div class="stats-grid">
                     <div class="stat-card highlight">
@@ -122,10 +117,6 @@
         <!-- 视图：设置 -->
         <div id="view-settings" class="view-section" style="display: none;">
             <div class="settings-container">
-                <div class="settings-header">
-                    <h3>设置</h3>
-                </div>
-                
                 <div class="settings-group">
                     <div class="settings-item">
                         <div class="item-info">
@@ -219,7 +210,7 @@
     <div id="modal-new-entry" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>记录新梦境</h3>
+                <h3>新记录</h3>
                 <button id="close-modal-btn" class="close-btn">×</button>
             </div>
             <div class="modal-body">
@@ -295,7 +286,7 @@
                 </div>
 
                 <!-- 内容输入 -->
-                <textarea id="dream-input" placeholder="描述你今天的梦境...&#10;时间、地点、人物、发生了什么？"></textarea>
+                <textarea id="dream-input" placeholder="描述你今天的梦境/日记/内心OS...&#10;时间、地点、人物、发生了什么？"></textarea>
 
                 <!-- 标签输入 -->
                 <div class="form-group">

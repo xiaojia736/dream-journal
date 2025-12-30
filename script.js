@@ -139,6 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const fabAdd = document.getElementById('fab-add');
     const navItems = document.querySelectorAll('.nav-item');
     const views = document.querySelectorAll('.view-section');
+    const appTitleEl = document.getElementById('app-title');
     
     // New Form Elements
     const moodSelector = document.getElementById('mood-selector');
@@ -622,6 +623,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 item.classList.remove('active');
             }
         });
+
+        // 更新标题栏标题
+        if (appTitleEl) {
+            if (targetId === 'view-home') appTitleEl.textContent = '星海日记';
+            else if (targetId === 'view-stats') appTitleEl.textContent = '梦境数据';
+            else if (targetId === 'view-settings') appTitleEl.textContent = '设置';
+        }
 
         // 仅在首页显示 FAB
         if (targetId === 'view-home') {
