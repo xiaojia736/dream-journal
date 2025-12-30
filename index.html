@@ -54,7 +54,7 @@
             
             <div id="entries-list" class="timeline">
                 <!-- 列表内容由 JS 动态加载 -->
-                <div class="empty-state">加载中...</div>
+                <div class="empty-state">星海日记 · 正在唤醒记忆...</div>
             </div>
         </div>
 
@@ -391,10 +391,13 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">代表色</label>
-                    <div style="display: flex; gap: 10px; align-items: center;">
-                        <input type="color" id="new-mood-color" value="#a18cd1" style="width: 50px; height: 40px; border: none; background: transparent; cursor: pointer;">
-                        <span id="color-preview-text" style="color: var(--text-secondary); font-size: 0.9rem;">#a18cd1</span>
+                    <div class="color-row">
+                        <!-- 原生取色器：Android/iOS 可用；鸿蒙 Next 不弹出时可用下面“常用色/HEX”兜底 -->
+                        <input type="color" id="new-mood-color" value="#a18cd1" class="color-picker-input">
+                        <span id="color-preview-text" class="color-preview-text">#a18cd1</span>
+                        <input type="text" id="new-mood-color-hex" class="color-hex-input" value="#a18cd1" inputmode="text" autocomplete="off" spellcheck="false" aria-label="颜色HEX输入">
                     </div>
+                    <div id="mood-color-palette" class="color-palette" aria-label="常用颜色选择"></div>
                 </div>
                 <div class="form-actions" style="display: flex; gap: 10px; margin-top: 10px;">
                     <button id="cancel-add-mood-btn" class="secondary-btn" style="flex: 1; padding: 10px; border-radius: 20px; border: 1px solid var(--border-color); background: transparent; cursor: pointer;">取消</button>

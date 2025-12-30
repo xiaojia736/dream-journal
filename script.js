@@ -237,6 +237,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const newMoodEmoji = document.getElementById('new-mood-emoji');
     const newMoodColor = document.getElementById('new-mood-color');
     const colorPreviewText = document.getElementById('color-preview-text');
+    const newMoodColorHex = document.getElementById('new-mood-color-hex');
+    const moodColorPalette = document.getElementById('mood-color-palette');
 
     // 通用星星 SVG 图标
     const STAR_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%"><path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.375-2.212.749-2.305l5.404-.433 2.082-5.006z" clip-rule="evenodd" /></svg>`;
@@ -796,11 +798,85 @@ document.addEventListener('DOMContentLoaded', () => {
         newMoodEmoji.value = '';
         newMoodColor.value = '#a18cd1'; // 重置为默认颜色
         colorPreviewText.textContent = '#a18cd1';
+        if (newMoodColorHex) newMoodColorHex.value = '#a18cd1';
+        if (moodColorPalette) {
+            moodColorPalette.querySelectorAll('.color-swatch').forEach(el => el.classList.remove('selected'));
+            const first = moodColorPalette.querySelector(`.color-swatch[data-color=\"#a18cd1\"]`);
+            if (first) first.classList.add('selected');
+        }
         
         // 稍微延迟聚焦，等待模态框动画开始
         setTimeout(() => {
             newMoodInput.focus();
         }, 100);
+    }
+
+    // 颜色兜底：常用色 + HEX 输入（鸿蒙 Next 不支持原生取色器时可用）
+    const PRESET_MOOD_COLORS = [
+        '#a18cd1', '#9b9ece', '#6a6c9c', '#ffb7b2', '#FFD166', '#06D6A0', '#118AB2', '#EF476F',
+        '#fbc2eb', '#c5cae9', '#80EDCE', '#7ACFE6', '#F7A8B8', '#9B89B3', '#f0f2f7', '#434343'
+    ];
+
+    function normalizeHexColor(input) {
+        if (!input) return null;
+        let s = String(input).trim();
+        if (!s) return null;
+        if (s[0] !== '#') s = '#' + s;
+        // 支持 #RGB/#RRGGBB
+        const short = /^#([0-9a-fA-F]{3})$/;
+        const full = /^#([0-9a-fA-F]{6})$/;
+        if (short.test(s)) {
+            const m = s.match(short);
+            const r = m[1][0], g = m[1][1], b = m[1][2];
+            return ('#' + r + r + g + g + b + b).toLowerCase();
+        }
+        if (full.test(s)) return s.toLowerCase();
+        return null;
+    }
+
+    function setMoodColorUI(hex) {
+        const color = normalizeHexColor(hex) || '#a18cd1';
+        if (newMoodColor) newMoodColor.value = color;
+        if (colorPreviewText) colorPreviewText.textContent = color;
+        if (newMoodColorHex) newMoodColorHex.value = color;
+        if (moodColorPalette) {
+            moodColorPalette.querySelectorAll('.color-swatch').forEach(el => {
+                el.classList.toggle('selected', el.dataset.color === color);
+            });
+        }
+    }
+
+    function initMoodColorPalette() {
+        if (!moodColorPalette) return;
+        moodColorPalette.innerHTML = PRESET_MOOD_COLORS.map(c => `
+            <button type="button" class="color-swatch" data-color="${c}" style="background: ${c};"></button>
+        `).join('');
+        moodColorPalette.querySelectorAll('.color-swatch').forEach(btn => {
+            btn.addEventListener('click', () => setMoodColorUI(btn.dataset.color));
+        });
+    }
+
+    initMoodColorPalette();
+    setMoodColorUI('#a18cd1');
+
+    if (newMoodColor) {
+        newMoodColor.addEventListener('input', (e) => setMoodColorUI(e.target.value));
+    }
+    if (newMoodColorHex) {
+        newMoodColorHex.addEventListener('input', (e) => {
+            const norm = normalizeHexColor(e.target.value);
+            if (norm) setMoodColorUI(norm);
+            else if (colorPreviewText) colorPreviewText.textContent = e.target.value.trim();
+        });
+        newMoodColorHex.addEventListener('blur', (e) => {
+            const norm = normalizeHexColor(e.target.value);
+            if (!norm) {
+                alert('颜色格式不正确，请输入 #RRGGBB 或 #RGB');
+                setMoodColorUI(newMoodColor?.value || '#a18cd1');
+            } else {
+                setMoodColorUI(norm);
+            }
+        });
     }
 
     // 监听 emoji 输入框聚焦，防止键盘遮挡
@@ -843,7 +919,7 @@ document.addEventListener('DOMContentLoaded', () => {
         confirmAddMoodBtn.addEventListener('click', () => {
             const label = newMoodInput.value.trim();
             const emoji = newMoodEmoji.value.trim() || '✨'; // 默认星星
-            const color = newMoodColor.value;
+            const color = normalizeHexColor(newMoodColorHex?.value) || normalizeHexColor(newMoodColor?.value) || '#a18cd1';
             
             if (label) {
                 const key = 'custom_' + Date.now(); // 生成唯一Key
