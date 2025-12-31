@@ -723,7 +723,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // 更新标题栏标题
         if (appTitleEl) {
             if (targetId === 'view-home') appTitleEl.textContent = '星海日记';
-            else if (targetId === 'view-stats') appTitleEl.textContent = '数据统计';
+            else if (targetId === 'view-stats') appTitleEl.textContent = '碎片收集';
             else if (targetId === 'view-settings') appTitleEl.textContent = '设置';
         }
 
@@ -1434,7 +1434,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (currentFilter.tag) {
                      entriesList.innerHTML = '<div class="empty-state">该标签下暂无记录</div>';
                 } else {
-                     entriesList.innerHTML = '<div class="empty-state">还没有记录，点击右下角“+”号开始记录你的第一个梦境吧！</div>';
+                     entriesList.innerHTML = '<div class="empty-state">还没有记录，点击右下角“+”号开始记录你的第一个星海碎片吧！</div>';
                 }
                 return;
             }
