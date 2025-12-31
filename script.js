@@ -142,7 +142,12 @@ const SafeStorage = {
                 if (v && typeof v.then === 'function') {
                     console.warn('Native storage bridge returned Promise; expected sync value. Falling back to localStorage.');
                 } else {
-                    return v ?? null;
+                    // 如果桥接返回 null/undefined，允许回退到 localStorage（避免桥接未实现导致全站“读空”）
+                    if (v === null || v === undefined) {
+                        // fallthrough to localStorage
+                    } else {
+                        return v;
+                    }
                 }
             } catch (e) {
                 console.error('NativeStorage Read Error:', e);
@@ -1839,7 +1844,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // 1. 数据获取与验证
         const key = 'dream-entries'; // 确认使用的 Key
-        const rawData = SafeStorage.getItem(key);
+        let rawData = SafeStorage.getItem(key);
+        // 兼容：部分桥接会返回 "null"/"undefined" 字符串
+        if (rawData === 'null' || rawData === 'undefined') rawData = null;
         
         console.log(`正在读取 localStorage key: "${key}"`);
         console.log('获取到的原始数据类型:', typeof rawData);
