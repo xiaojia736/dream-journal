@@ -1993,7 +1993,21 @@ document.addEventListener('DOMContentLoaded', () => {
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            
+            // 策略调整：对于 Android WebView，我们不主动销毁 URL，而是等待 Android 端回调通知
+            // 或者是简单地依赖页面刷新/关闭来释放。
+            // 如果不是 Android WebView，还是保持原有的延迟释放逻辑（比如 PC 浏览器）
+            const isAndroidWebView = /Android.*(wv|Version\/)/.test(navigator.userAgent);
+            
+            if (!isAndroidWebView) {
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+            } else {
+                // 将 url 挂载到全局，供 Android 端回调清理（可选）
+                // 或者干脆不销毁，等待页面生命周期结束自动回收。
+                // 考虑到日记文件通常很小，泄露这一个 URL 内存占用可忽略不计。
+                // 但为了严谨，我们提供一个清理方法：
+                window.lastExportUrl = url;
+            }
 
             console.log('=== 导出操作已触发（download fallback） ===');
             await showConfirmChoice({
@@ -2009,6 +2023,15 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('导出发生错误: ' + e.message);
         }
     }
+
+    // Android 端回调：通知资源已导出完成，可以释放 Blob URL
+    window.onExportComplete = function() {
+        if (window.lastExportUrl) {
+            console.log('Android export complete, revoking URL:', window.lastExportUrl);
+            URL.revokeObjectURL(window.lastExportUrl);
+            window.lastExportUrl = null;
+        }
+    };
 
     function importData(e) {
         const file = e.target.files[0];
