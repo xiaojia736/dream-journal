@@ -1998,15 +1998,21 @@ document.addEventListener('DOMContentLoaded', () => {
             // 或者是简单地依赖页面刷新/关闭来释放。
             // 如果不是 Android WebView，还是保持原有的延迟释放逻辑（比如 PC 浏览器）
             const isAndroidWebView = /Android.*(wv|Version\/)/.test(navigator.userAgent);
-            
-            if (!isAndroidWebView) {
-                setTimeout(() => URL.revokeObjectURL(url), 1000);
-            } else {
+
+            // 优先检查原生注入的接口
+            if (window.AndroidExport && window.AndroidExport.exportData) {
+                 console.log('Using Android Native Interface for export');
+                 window.AndroidExport.exportData(jsonString);
+                 return;
+            }
+
+            if (isAndroidWebView) {
                 // 将 url 挂载到全局，供 Android 端回调清理（可选）
-                // 或者干脆不销毁，等待页面生命周期结束自动回收。
-                // 考虑到日记文件通常很小，泄露这一个 URL 内存占用可忽略不计。
-                // 但为了严谨，我们提供一个清理方法：
+                // 仅当走 DownloadManager 兜底时才需要（因为原生 Interface 已在上面 return 了）
                 window.lastExportUrl = url;
+            } else {
+                // PC 或其他浏览器，稍微延迟后释放
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
             }
 
             console.log('=== 导出操作已触发（download fallback） ===');
