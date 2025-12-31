@@ -1951,6 +1951,22 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             // 2) 生成文件内容（UTF-8），用 Blob 避免中文乱码 & 避免超长 dataURI
             const jsonString = JSON.stringify(parsedData, null, 2);
+            
+            // 2.5) 原生导出优先（鸿蒙 Next / Android）
+            // - 鸿蒙侧注入：window.HarmonyExport.exportData(jsonString)
+            // - Android 侧注入：window.AndroidExport.exportData(jsonString)
+            // 注意：原生导出内部会弹系统保存对话框并写文件
+            if (window.HarmonyExport && typeof window.HarmonyExport.exportData === 'function') {
+                console.log('Using Harmony Native Interface for export');
+                window.HarmonyExport.exportData(jsonString);
+                return;
+            }
+            if (window.AndroidExport && typeof window.AndroidExport.exportData === 'function') {
+                console.log('Using Android Native Interface for export');
+                window.AndroidExport.exportData(jsonString);
+                return;
+            }
+
             const blob = new Blob([jsonString], { type: 'application/json;charset=utf-8' });
 
             // 3) 生成文件名: dream_diary_backup_YYYYMMDD_HHMMSS.json
@@ -1982,40 +1998,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.warn('showSaveFilePicker failed, fallback to download:', e);
                 }
             }
-
-            // 5) 兜底：触发浏览器下载（目录由系统/宿主 WebView 决定，通常在“下载/Downloads”）
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            a.rel = 'noopener';
-            a.style.display = 'none';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            
-            // 策略调整：对于 Android WebView，我们不主动销毁 URL，而是等待 Android 端回调通知
-            // 或者是简单地依赖页面刷新/关闭来释放。
-            // 如果不是 Android WebView，还是保持原有的延迟释放逻辑（比如 PC 浏览器）
-            const isAndroidWebView = /Android.*(wv|Version\/)/.test(navigator.userAgent);
-
-            // 优先检查原生注入的接口
-            if (window.AndroidExport && window.AndroidExport.exportData) {
-                 console.log('Using Android Native Interface for export');
-                 window.AndroidExport.exportData(jsonString);
-                 return;
-            }
-
-            if (isAndroidWebView) {
-                // 将 url 挂载到全局，供 Android 端回调清理（可选）
-                // 仅当走 DownloadManager 兜底时才需要（因为原生 Interface 已在上面 return 了）
-                window.lastExportUrl = url;
-            } else {
-                // PC 或其他浏览器，稍微延迟后释放
-                setTimeout(() => URL.revokeObjectURL(url), 1000);
-            }
-
-            console.log('=== 导出操作已触发（download fallback） ===');
+        
             await showConfirmChoice({
                 title: '导出成功',
                 message:
