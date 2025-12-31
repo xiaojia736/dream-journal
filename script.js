@@ -525,8 +525,12 @@ document.addEventListener('DOMContentLoaded', () => {
              // Re-bind click events for selection
              editMoodSelector.querySelectorAll('.mood-tag:not(.add-btn)').forEach(tag => {
                  tag.addEventListener('click', () => {
-                    editMoodSelector.querySelectorAll('.mood-tag').forEach(t => t.classList.remove('selected'));
-                    tag.classList.add('selected');
+                    const allTags = editMoodSelector.querySelectorAll('.mood-tag:not(.add-btn)');
+                    const wasSelected = tag.classList.contains('selected');
+                    allTags.forEach(t => t.classList.remove('selected'));
+                    if (!wasSelected) {
+                        tag.classList.add('selected');
+                    }
                  });
              });
 
@@ -823,7 +827,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const mainClone = tag.cloneNode(true);
             mainClone.addEventListener('click', () => {
                 const allTags = moodSelector.querySelectorAll('.mood-tag:not(.add-btn)');
+                const wasSelected = mainClone.classList.contains('selected');
                 allTags.forEach(t => t.classList.remove('selected'));
+                if (wasSelected) {
+                    selectedMood = '';
+                    return;
+                }
                 mainClone.classList.add('selected');
                 selectedMood = mainClone.dataset.mood;
             });
@@ -842,8 +851,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const editClone = tag.cloneNode(true);
                 editClone.addEventListener('click', () => {
                      const allTags = editMoodSelector.querySelectorAll('.mood-tag:not(.add-btn)');
+                     const wasSelected = editClone.classList.contains('selected');
                      allTags.forEach(t => t.classList.remove('selected'));
-                     editClone.classList.add('selected');
+                     if (!wasSelected) {
+                        editClone.classList.add('selected');
+                     }
                 });
                 editAddBtn.parentNode.insertBefore(editClone, editAddBtn);
             }
@@ -1155,8 +1167,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // 情绪选择逻辑
     moodTags.forEach(tag => {
         tag.addEventListener('click', () => {
-            // 单选逻辑
-            moodTags.forEach(t => t.classList.remove('selected'));
+            const allTags = moodSelector ? moodSelector.querySelectorAll('.mood-tag:not(.add-btn)') : moodTags;
+            const wasSelected = tag.classList.contains('selected');
+            allTags.forEach(t => t.classList.remove('selected'));
+            if (wasSelected) {
+                selectedMood = '';
+                return;
+            }
             tag.classList.add('selected');
             selectedMood = tag.dataset.mood;
         });
