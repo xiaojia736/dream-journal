@@ -1162,14 +1162,17 @@ body::before {
 
 /* 类型选择器 */
 .type-selector {
+    /* 3 个按钮等宽，避免“内心OS”换行 */
+    --type-gap: 0.6rem;
     display: flex;
-    gap: 0.8rem;
+    gap: var(--type-gap);
 }
 
 .type-option {
     flex: 1;
     position: relative;
     cursor: pointer;
+    min-width: 0; /* 允许内容收缩 */
 }
 
 .type-option input {
@@ -1181,13 +1184,16 @@ body::before {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0.8rem;
+    padding: 0.65rem 0.4rem;
     border: 1px solid var(--border-color);
     border-radius: 12px;
-    font-size: 0.9rem;
+    font-size: 0.86rem;
     color: var(--text-secondary);
     transition: all 0.2s;
     background: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .type-option input:checked + span {

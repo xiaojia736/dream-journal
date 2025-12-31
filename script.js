@@ -302,6 +302,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Search Element
     const searchInput = document.getElementById('search-input');
+    const searchContainer = document.querySelector('#view-home .search-container');
 
     // Flashback Element
     const flashbackCard = document.getElementById('flashback-card');
@@ -722,7 +723,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // 更新标题栏标题
         if (appTitleEl) {
             if (targetId === 'view-home') appTitleEl.textContent = '星海日记';
-            else if (targetId === 'view-stats') appTitleEl.textContent = '梦境数据';
+            else if (targetId === 'view-stats') appTitleEl.textContent = '数据统计';
             else if (targetId === 'view-settings') appTitleEl.textContent = '设置';
         }
 
@@ -1390,7 +1391,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function loadEntries(searchKeyword = '') {
         try {
-            let entries = JSON.parse(SafeStorage.getItem('dream-entries') || '[]');
+            // 先判断“是否有任何记录”，决定是否显示搜索框
+            const allEntriesRaw = JSON.parse(SafeStorage.getItem('dream-entries') || '[]');
+            const hasAnyEntries = Array.isArray(allEntriesRaw) && allEntriesRaw.length > 0;
+            if (searchContainer) {
+                searchContainer.classList.toggle('hidden', !hasAnyEntries);
+            }
+
+            let entries = allEntriesRaw;
             
             // 应用筛选 (Type & Tag)
             if (currentFilter.type) {
