@@ -332,6 +332,55 @@ document.addEventListener('DOMContentLoaded', () => {
     const ENTRIES_KEY = 'dream-entries';
     let entriesCache = null; // 内存兜底：某些 WebView 写入失败时仍能导出当前会话数据
 
+    function getEntrySortTime(entry) {
+        if (!entry) return 0;
+        return (
+            entry.modifiedAt ||
+            entry.createdAt ||
+            entry.timestamp ||
+            entry.id ||
+            0
+        );
+    }
+
+    function safeParseCreatedAt(entry) {
+        // 优先使用显式 createdAt；其次用旧字段 timestamp/id；最后尝试从 date 字符串解析
+        const base = entry?.createdAt || entry?.timestamp || entry?.id;
+        if (typeof base === 'number' && Number.isFinite(base)) return base;
+
+        const dateStr = entry?.date;
+        if (typeof dateStr === 'string' && dateStr.trim()) {
+            const t = Date.parse(dateStr.replace(/\//g, '-'));
+            if (!Number.isNaN(t)) return t;
+        }
+        return Date.now();
+    }
+
+    function normalizeEntry(e) {
+        if (!e || typeof e !== 'object') return e;
+
+        const createdAt = safeParseCreatedAt(e);
+        const createdDateStr = e.createdDateStr || e.date || new Date(createdAt).toLocaleString('zh-CN', { hour12: false });
+
+        // 规则：date 只作为创建时间（只在首次创建赋值）
+        // 老数据：date 已存在则视为创建时间；没有则补齐
+        const out = {
+            ...e,
+            createdAt: e.createdAt || createdAt,
+            createdDateStr,
+            date: createdDateStr,
+        };
+
+        // 规则：modified 缺失则等于创建时间
+        if (!out.modifiedAt) out.modifiedAt = out.createdAt;
+        if (!out.modifiedDateStr) out.modifiedDateStr = out.createdDateStr;
+
+        // 兼容旧字段：timestamp 若缺失则用 createdAt
+        if (!out.timestamp) out.timestamp = out.createdAt;
+
+        return out;
+    }
+
     function getEntries() {
         // 1) 内存缓存优先（确保 UI 与导出一致）
         if (Array.isArray(entriesCache)) return entriesCache;
@@ -354,8 +403,11 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const parsed = JSON.parse(raw);
             const arr = Array.isArray(parsed) ? parsed : [];
-            entriesCache = arr;
-            return arr;
+            // 兼容旧数据：补齐 created*/modified* 并套用新规则
+            const normalized = arr.map(normalizeEntry);
+            normalized.sort((a, b) => getEntrySortTime(b) - getEntrySortTime(a));
+            entriesCache = normalized;
+            return normalized;
         } catch (e) {
             console.error('Failed to parse entries JSON:', e);
             entriesCache = [];
@@ -364,7 +416,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function setEntries(entries) {
-        const arr = Array.isArray(entries) ? entries : [];
+        const arr = (Array.isArray(entries) ? entries : []).map(normalizeEntry);
+        // 按最近修改时间排序，保证“最新修改在最前”
+        arr.sort((a, b) => getEntrySortTime(b) - getEntrySortTime(a));
         entriesCache = arr;
         try {
             SafeStorage.setItem(ENTRIES_KEY, JSON.stringify(arr));
@@ -549,13 +603,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // 1. Populate Inputs
-        // Date: Convert locale string/timestamp to YYYY-MM-DDTHH:mm for datetime-local
+        // Date（创建时间）：只读显示，不再允许编辑影响创建时间
         try {
-            const d = new Date(parseInt(entry.id)); // Use ID as timestamp source of truth
-            // Format to local ISO-like string
+            const createdAt = entry.createdAt || entry.timestamp || entry.id;
+            const d = new Date(parseInt(createdAt));
             const offset = d.getTimezoneOffset() * 60000;
             const localISOTime = (new Date(d - offset)).toISOString().slice(0, 16);
             editDateInput.value = localISOTime;
+            editDateInput.disabled = true;
         } catch (e) {
             console.error('Date parsing error', e);
         }
@@ -654,21 +709,9 @@ document.addEventListener('DOMContentLoaded', () => {
             newMood = selectedMoodTag.dataset.mood;
         }
 
-        // Date Handling
-        const newDateVal = editDateInput.value; // YYYY-MM-DDTHH:mm
-        let newTimestamp = entries[entryIndex].id; // Default keep ID
-        let newDateStr = entries[entryIndex].date;
-
-        if (newDateVal) {
-            const newDateObj = new Date(newDateVal);
-            // We usually keep the ID (creation time) same to preserve identity, 
-            // but update the display date and sorting timestamp.
-            // If we update ID, it might break references? Let's keep ID constant but update a 'timestamp' field used for sorting.
-            // Current app uses 'id' as timestamp often.
-            // Let's update the 'timestamp' field and 'date' string.
-            newTimestamp = newDateObj.getTime();
-            newDateStr = newDateObj.toLocaleString('zh-CN', { hour12: false });
-        }
+        // 创建时间不再被编辑；最近修改时间（用于列表展示与排序）
+        const modifiedAt = Date.now();
+        const modifiedDateStr = new Date(modifiedAt).toLocaleString('zh-CN', { hour12: false });
 
         // Update Object
         entries[entryIndex] = {
@@ -677,19 +720,21 @@ document.addEventListener('DOMContentLoaded', () => {
             type: newType,
             mood: newMood,
             tags: [...editTags],
-            date: newDateStr,
-            timestamp: newTimestamp // Update sorting time
+            modifiedAt,
+            modifiedDateStr
         };
 
-        // Save
+        const updatedId = entries[entryIndex].id;
+        // Save（内部会排序，把最新修改放到最前）
         setEntries(entries);
 
         // Refresh UI
         loadEntries(); // Refresh main list
         renderStats(); // Refresh stats
         
-        // Refresh Current Modal View
-        openEntryDetail(entries[entryIndex]);
+        // Refresh Current Modal View（排序后 index 可能变化，按 id 重新查找）
+        const refreshed = getEntries().find(e => e.id.toString() === updatedId.toString());
+        if (refreshed) openEntryDetail(refreshed);
         
         // Alert & Exit
         // alert('修改已保存'); // Optional
@@ -1326,13 +1371,23 @@ document.addEventListener('DOMContentLoaded', () => {
         const type = document.querySelector('input[name="entry-type"]:checked').value;
         
         if (text) {
+            const nowTs = Date.now();
+            const nowStr = new Date(nowTs).toLocaleString('zh-CN', { hour12: false });
             const entry = {
-                id: Date.now(),
+                id: nowTs,
                 text: text,
                 type: type,
                 mood: selectedMood,
                 tags: currentTags, // 保存标签
-                date: new Date().toLocaleString('zh-CN', { hour12: false })
+                // 创建时间（只在第一次创建赋值）
+                createdAt: nowTs,
+                createdDateStr: nowStr,
+                // 兼容旧字段：date 作为“创建时间”
+                date: nowStr,
+                timestamp: nowTs,
+                // 最近修改时间（新建即最近修改）
+                modifiedAt: nowTs,
+                modifiedDateStr: nowStr
             };
             
             saveEntry(entry);
@@ -1492,7 +1547,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // 兼容旧数据
                 const text = entry.text || '';
-                const date = entry.date || '';
+                // 列表时间：显示最近一次编辑时间（modifiedDateStr），无则回退到旧字段
+                const date = entry.modifiedDateStr || entry.date || '';
                 // const tags = entry.tags || []; // 首页不再获取和显示标签
                 
                 // 处理长文本预览 (例如只显示前 80 个字符)
