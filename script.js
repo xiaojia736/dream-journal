@@ -328,6 +328,51 @@ document.addEventListener('DOMContentLoaded', () => {
     // 通用星星 SVG 图标
     const STAR_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%"><path fill-rule="evenodd" d="M9 4.5a.75.75 0 01.721.544l.813 2.846a3.75 3.75 0 002.576 2.576l2.846.813a.75.75 0 010 1.442l-2.846.813a3.75 3.75 0 00-2.576 2.576l-.813 2.846a.75.75 0 01-1.442 0l-.813-2.846a3.75 3.75 0 00-2.576-2.576l-2.846-.813a.75.75 0 010-1.442l2.846-.813a3.75 3.75 0 002.576-2.576L8.279 5.044A.75.75 0 019 4.5zM18 1.5a.75.75 0 01.728.568l.258 1.036c.236.94.97 1.674 1.91 1.91l1.036.258a.75.75 0 010 1.456l-1.036.258c-.94.236-1.674.97-1.91 1.91l-.258 1.036a.75.75 0 01-1.456 0l-.258-1.036a2.625 2.625 0 00-1.91-1.91l-1.036-.258a.75.75 0 010-1.456l1.036-.258a2.625 2.625 0 001.91-1.91l.258-1.036A.75.75 0 0118 1.5zM16.5 15a.75.75 0 01.712.513l.394 1.183c.15.447.5.799.948.948l1.183.395a.75.75 0 010 1.422l-1.183.395c-.447.15-.799.5-.948.948l-.395 1.183a.75.75 0 01-1.422 0l-.395-1.183a1.5 1.5 0 00-.948-.948l-1.183-.395a.75.75 0 010-1.422l1.183-.395c.447-.15.799-.5.948-.948l.395-1.183A.75.75 0 0116.5 15z" clip-rule="evenodd" /></svg>`;
 
+    // ========= 数据读写统一入口（避免 load/export 逻辑分叉） =========
+    const ENTRIES_KEY = 'dream-entries';
+    let entriesCache = null; // 内存兜底：某些 WebView 写入失败时仍能导出当前会话数据
+
+    function getEntries() {
+        // 1) 内存缓存优先（确保 UI 与导出一致）
+        if (Array.isArray(entriesCache)) return entriesCache;
+
+        // 2) 存储读取
+        let raw = SafeStorage.getItem(ENTRIES_KEY);
+        if (raw === 'null' || raw === 'undefined') raw = null;
+
+        // 允许桥接直接返回数组
+        if (Array.isArray(raw)) {
+            entriesCache = raw;
+            return raw;
+        }
+
+        if (!raw) {
+            entriesCache = [];
+            return [];
+        }
+
+        try {
+            const parsed = JSON.parse(raw);
+            const arr = Array.isArray(parsed) ? parsed : [];
+            entriesCache = arr;
+            return arr;
+        } catch (e) {
+            console.error('Failed to parse entries JSON:', e);
+            entriesCache = [];
+            return [];
+        }
+    }
+
+    function setEntries(entries) {
+        const arr = Array.isArray(entries) ? entries : [];
+        entriesCache = arr;
+        try {
+            SafeStorage.setItem(ENTRIES_KEY, JSON.stringify(arr));
+        } catch (e) {
+            console.error('Failed to persist entries:', e);
+        }
+    }
+
     // 默认/内置情绪数据映射
     const defaultMoods = {
         'happy': { label: '开心', emoji: '😊', color: '#FFD166' },
@@ -494,7 +539,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function enterEditMode() {
         isEditing = true;
-        const entries = JSON.parse(SafeStorage.getItem('dream-entries') || '[]');
+        const entries = getEntries();
         const entry = entries.find(e => e.id.toString() === currentDetailEntryId.toString());
         
         if (!entry) {
@@ -592,7 +637,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const entries = JSON.parse(SafeStorage.getItem('dream-entries') || '[]');
+        const entries = getEntries();
         const entryIndex = entries.findIndex(e => e.id.toString() === currentDetailEntryId.toString());
         
         if (entryIndex === -1) {
@@ -637,7 +682,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         // Save
-        SafeStorage.setItem('dream-entries', JSON.stringify(entries));
+        setEntries(entries);
 
         // Refresh UI
         loadEntries(); // Refresh main list
@@ -1315,12 +1360,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function saveEntry(entry) {
         try {
-            let entries = JSON.parse(SafeStorage.getItem('dream-entries') || '[]');
-            if (!Array.isArray(entries)) {
-                entries = [];
-            }
+            const entries = getEntries();
             entries.unshift(entry);
-            SafeStorage.setItem('dream-entries', JSON.stringify(entries));
+            setEntries(entries);
         } catch (e) {
             console.error('Failed to save entry:', e);
             alert('保存失败，请检查存储空间或重试。');
@@ -1397,7 +1439,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function loadEntries(searchKeyword = '') {
         try {
             // 先判断“是否有任何记录”，决定是否显示搜索框
-            const allEntriesRaw = JSON.parse(SafeStorage.getItem('dream-entries') || '[]');
+            const allEntriesRaw = getEntries();
             const hasAnyEntries = Array.isArray(allEntriesRaw) && allEntriesRaw.length > 0;
             if (searchContainer) {
                 searchContainer.classList.toggle('hidden', !hasAnyEntries);
@@ -1525,10 +1567,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (r !== 'confirm') return;
 
             try {
-                let entries = JSON.parse(SafeStorage.getItem('dream-entries') || '[]');
+                let entries = getEntries();
                 // 过滤掉该 id
                 entries = entries.filter(e => e.id.toString() !== id.toString());
-                SafeStorage.setItem('dream-entries', JSON.stringify(entries));
+                setEntries(entries);
                 
                 // 重新加载 (或者可以做更精细的 DOM 删除动画)
                 loadEntries();
@@ -1544,7 +1586,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 统计功能逻辑
     function renderStats() {
-        const entries = JSON.parse(SafeStorage.getItem('dream-entries') || '[]');
+        const entries = getEntries();
         
         // 1. 核心指标
         document.getElementById('stat-total').textContent = entries.length;
@@ -1842,40 +1884,11 @@ document.addEventListener('DOMContentLoaded', () => {
     async function exportData() {
         console.log('=== 开始执行导出流程 ===');
         
-        // 1. 数据获取与验证
-        const key = 'dream-entries'; // 确认使用的 Key
-        let rawData = SafeStorage.getItem(key);
-        // 兼容：部分桥接会返回 "null"/"undefined" 字符串
-        if (rawData === 'null' || rawData === 'undefined') rawData = null;
-        
-        console.log(`正在读取 localStorage key: "${key}"`);
-        console.log('获取到的原始数据类型:', typeof rawData);
-        if (rawData) {
-            console.log('获取到的原始数据长度:', rawData.length);
-            console.log('获取到的原始数据(前100字符):', rawData.substring(0, 100));
-        } else {
-            console.log('获取到的原始数据: null');
-        }
-
-        // 判空逻辑
-        if (!rawData) {
-            console.warn('导出失败：无法从 localStorage 获取数据');
+        // 1) 数据获取与验证（统一入口）
+        const parsedData = getEntries();
+        if (!Array.isArray(parsedData) || parsedData.length === 0) {
+            console.warn('导出中止：当前无可导出数据');
             alert('没有可导出的日记！(数据为空)');
-            return;
-        }
-
-        let parsedData;
-        try {
-            parsedData = JSON.parse(rawData);
-            if (!Array.isArray(parsedData) || parsedData.length === 0) {
-                console.warn('导出中止：数据解析后为空数组');
-                alert('没有可导出的日记！(列表为空)');
-                return;
-            }
-            console.log('数据校验通过，包含条目数:', parsedData.length);
-        } catch (e) {
-            console.error('JSON 解析错误:', e);
-            alert('导出失败：数据格式错误');
             return;
         }
 
@@ -1978,11 +1991,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (choice === 'confirm') {
                      // 覆盖模式
-                     SafeStorage.setItem('dream-entries', JSON.stringify(data));
+                     setEntries(data);
                      alert('导入成功！旧数据已覆盖。');
                 } else {
                     // 合并模式 (去重 id)
-                    const current = JSON.parse(SafeStorage.getItem('dream-entries') || '[]');
+                    const current = getEntries();
                     const currentIds = new Set(current.map(c => c.id));
                     
                     // 找出新数据中 ID 不重复的项
@@ -1993,7 +2006,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else {
                         // 合并并按 ID (时间戳) 倒序排列
                         const merged = [...newEntries, ...current].sort((a,b) => b.id - a.id);
-                        SafeStorage.setItem('dream-entries', JSON.stringify(merged));
+                        setEntries(merged);
                         alert(`导入成功！已追加 ${newEntries.length} 条新记录。`);
                     }
                 }
@@ -2034,7 +2047,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             if (r2 !== 'confirm') return;
 
-            SafeStorage.removeItem('dream-entries');
+            SafeStorage.removeItem(ENTRIES_KEY);
+            entriesCache = [];
             loadEntries();
             renderStats();
             alert('数据已清空');
@@ -2155,7 +2169,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!flashbackCard) return;
         
         try {
-            const entries = JSON.parse(SafeStorage.getItem('dream-entries') || '[]');
+            const entries = getEntries();
             
             // 至少要有3条日记才显示
             if (entries.length < 3) {
