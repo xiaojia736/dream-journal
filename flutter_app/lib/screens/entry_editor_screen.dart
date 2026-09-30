@@ -175,6 +175,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     final entry = _entry(context);
     if (widget.entryId != null && entry == null) {
       return const Scaffold(body: Center(child: Text('找不到这条记录')));
@@ -185,6 +186,26 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
             .toList() ??
         const <JournalPhoto>[];
     return Scaffold(
+      bottomNavigationBar: DecoratedBox(
+        decoration: BoxDecoration(
+          color: (dark ? const Color(0xff151126) : AppColors.lightBackground)
+              .withValues(alpha: .98),
+          border: Border(
+            top: BorderSide(
+              color: dark
+                  ? Colors.white.withValues(alpha: .08)
+                  : AppColors.lightBorder,
+            ),
+          ),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
+            child: PrimaryAction(label: '保存记录', onPressed: _save, busy: _busy),
+          ),
+        ),
+      ),
       body: GradientBackground(
         child: SafeArea(
           child: CustomScrollView(
@@ -195,7 +216,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                 title: Text(entry == null ? '记录此刻' : '编辑记录'),
                 backgroundColor: Theme.of(
                   context,
-                ).scaffoldBackgroundColor.withValues(alpha: .92),
+                ).scaffoldBackgroundColor.withValues(alpha: .8),
               ),
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 38),
@@ -248,27 +269,41 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                       maxLines: 14,
                       maxLength: 50000,
                       maxLengthEnforcement: MaxLengthEnforcement.enforced,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         hintText: '今天发生了什么？写下地点、人物和心情……',
+                        filled: true,
+                        fillColor: dark
+                            ? const Color(0xff2d244a).withValues(alpha: .5)
+                            : Colors.white.withValues(alpha: .82),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(15),
+                          borderSide: BorderSide(
+                            color: dark
+                                ? Colors.white.withValues(alpha: .12)
+                                : AppColors.lightBorder,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 18),
                     const _Label('情绪'),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        for (final mood in Mood.values.where(
-                          (value) => value != Mood.none,
-                        ))
-                          ChoiceChip(
-                            label: Text('${mood.emoji} ${mood.label}'),
-                            selected: _mood == mood,
-                            onSelected: (_) => setState(
-                              () => _mood = _mood == mood ? Mood.none : mood,
+                    SizedBox(
+                      height: 42,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        children: [
+                          for (final mood in Mood.values.where(
+                            (value) => value != Mood.none,
+                          ))
+                            _MoodChip(
+                              mood: mood,
+                              selected: _mood == mood,
+                              onTap: () => setState(
+                                () => _mood = _mood == mood ? Mood.none : mood,
+                              ),
                             ),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 22),
                     const _Label('标签'),
@@ -322,12 +357,72 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 28),
-                    PrimaryAction(label: '保存记录', onPressed: _save, busy: _busy),
+                    const SizedBox(height: 10),
                   ],
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MoodChip extends StatelessWidget {
+  const _MoodChip({
+    required this.mood,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final Mood mood;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final highlight = dark ? AppColors.darkPrimary : AppColors.lightPrimary;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(99),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(99),
+              color: selected
+                  ? highlight.withValues(alpha: dark ? .22 : .14)
+                  : Colors.transparent,
+              border: Border.all(
+                color: selected
+                    ? highlight
+                    : AppColors.border(context).withValues(alpha: .65),
+              ),
+              boxShadow: selected && dark
+                  ? [
+                      BoxShadow(
+                        color: highlight.withValues(alpha: .32),
+                        blurRadius: 10,
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Text(
+              '${mood.emoji} ${mood.label}',
+              style: TextStyle(
+                color: selected
+                    ? (dark ? AppColors.darkText : AppColors.lightText)
+                    : AppColors.muted(context),
+                fontSize: 13,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
           ),
         ),
       ),

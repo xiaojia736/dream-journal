@@ -50,8 +50,8 @@ class _StarlightNavigation extends StatelessWidget {
     final dark = Theme.of(context).brightness == Brightness.dark;
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: (dark ? AppColors.darkCard : Colors.white).withValues(
-          alpha: .94,
+        color: (dark ? const Color(0xff2d244a) : Colors.white).withValues(
+          alpha: dark ? .86 : .94,
         ),
         border: Border(
           top: BorderSide(
@@ -84,8 +84,20 @@ class _StarlightNavigation extends StatelessWidget {
                         selected ? item.$2 : item.$1,
                         size: 22,
                         color: selected
-                            ? Theme.of(context).colorScheme.primary
+                            ? dark
+                                  ? const Color(0xffc4b5fd)
+                                  : Theme.of(context).colorScheme.primary
                             : AppColors.muted(context),
+                        shadows: selected && dark
+                            ? [
+                                Shadow(
+                                  color: const Color(
+                                    0xffa78bfa,
+                                  ).withValues(alpha: .5),
+                                  blurRadius: 8,
+                                ),
+                              ]
+                            : null,
                       ),
                       const SizedBox(height: 3),
                       Text(
@@ -96,7 +108,9 @@ class _StarlightNavigation extends StatelessWidget {
                               ? FontWeight.w600
                               : FontWeight.w400,
                           color: selected
-                              ? Theme.of(context).colorScheme.primary
+                              ? dark
+                                    ? const Color(0xffc4b5fd)
+                                    : Theme.of(context).colorScheme.primary
                               : AppColors.muted(context),
                         ),
                       ),
@@ -107,14 +121,19 @@ class _StarlightNavigation extends StatelessWidget {
                         height: selected ? 4 : 0,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: AppColors.darkAccent,
+                          color: dark
+                              ? AppColors.darkAccent
+                              : AppColors.lightAccent,
                           boxShadow: selected
                               ? [
                                   BoxShadow(
-                                    color: AppColors.darkAccent.withValues(
-                                      alpha: .7,
-                                    ),
-                                    blurRadius: 7,
+                                    color:
+                                        (dark
+                                                ? AppColors.darkAccent
+                                                : AppColors.lightAccent)
+                                            .withValues(alpha: .8),
+                                    blurRadius: 9,
+                                    spreadRadius: 1,
                                   ),
                                 ]
                               : null,

@@ -120,15 +120,24 @@ class _HomeScreenState extends State<HomeScreen>
                                       color: Theme.of(context)
                                           .colorScheme
                                           .primary
-                                          .withValues(alpha: .2),
-                                      blurRadius: 14,
+                                          .withValues(alpha: .36),
+                                      blurRadius: 12,
                                     ),
                                   ],
                                 ),
-                                child: Icon(
-                                  Icons.auto_awesome,
-                                  size: 19,
-                                  color: Theme.of(context).colorScheme.primary,
+                                child: ShaderMask(
+                                  shaderCallback: (bounds) =>
+                                      const LinearGradient(
+                                        colors: [
+                                          Color(0xffa78bfa),
+                                          Color(0xff818cf8),
+                                        ],
+                                      ).createShader(bounds),
+                                  child: const Icon(
+                                    Icons.auto_awesome,
+                                    size: 19,
+                                    color: Colors.white,
+                                  ),
                                 ),
                               ),
                             ),
@@ -163,20 +172,46 @@ class _HomeScreenState extends State<HomeScreen>
                         const SizedBox(height: 10),
                         SizedBox(
                           height: 35,
-                          child: ListView(
-                            scrollDirection: Axis.horizontal,
+                          child: Stack(
                             children: [
-                              _FilterChip(
-                                label: '全部',
-                                selected: _filter == null,
-                                onTap: () => setState(() => _filter = null),
+                              ListView(
+                                scrollDirection: Axis.horizontal,
+                                padding: const EdgeInsets.only(right: 28),
+                                children: [
+                                  _FilterChip(
+                                    label: '全部',
+                                    selected: _filter == null,
+                                    onTap: () => setState(() => _filter = null),
+                                  ),
+                                  for (final type in EntryType.values)
+                                    _FilterChip(
+                                      label: type.label,
+                                      selected: _filter == type,
+                                      onTap: () =>
+                                          setState(() => _filter = type),
+                                    ),
+                                ],
                               ),
-                              for (final type in EntryType.values)
-                                _FilterChip(
-                                  label: type.label,
-                                  selected: _filter == type,
-                                  onTap: () => setState(() => _filter = type),
+                              Positioned(
+                                top: 0,
+                                right: 0,
+                                bottom: 0,
+                                child: IgnorePointer(
+                                  child: Container(
+                                    width: 30,
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          Colors.transparent,
+                                          Theme.of(
+                                            context,
+                                          ).scaffoldBackgroundColor,
+                                        ],
+                                      ),
+                                    ),
+                                  ),
                                 ),
+                              ),
                             ],
                           ),
                         ),
@@ -311,7 +346,7 @@ class _WriteFab extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: dark
-                  ? const [Color(0xff9b83e6), Color(0xff6f5ab8)]
+                  ? const [Color(0xffa78bfa), Color(0xff818cf8)]
                   : const [Color(0xffe78b70), Color(0xffe9c46a)],
             ),
           ),
@@ -668,15 +703,15 @@ class _EmptyState extends StatelessWidget {
       );
     }
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 50),
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 50),
       child: Container(
-        padding: const EdgeInsets.all(26),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: dark
-                ? const [Color(0xff28204f), Color(0xff51417c)]
+                ? const [Color(0xcc382b65), Color(0xb826204a)]
                 : const [Color(0xffe07a5f), Color(0xffe9a66e)],
           ),
           borderRadius: BorderRadius.circular(18),
@@ -689,33 +724,93 @@ class _EmptyState extends StatelessWidget {
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
+        child: Stack(
           children: [
-            const Icon(Icons.auto_awesome, color: Colors.white, size: 34),
-            const SizedBox(height: 10),
-            const Text(
-              '从此刻开始记录',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 23,
-                fontWeight: FontWeight.w600,
+            if (dark)
+              const Positioned.fill(
+                child: IgnorePointer(
+                  child: CustomPaint(painter: _EmptyConstellationPainter()),
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              '一张照片、一段日常、一个梦。\n把值得珍藏的瞬间留在这里。',
-              style: TextStyle(color: Color(0xfff1edff), height: 1.6),
-            ),
-            const SizedBox(height: 18),
-            FilledButton.tonal(
-              onPressed: onCreate,
-              child: const Text('写下第一条  →'),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.auto_awesome,
+                  color: dark ? AppColors.darkAccent : Colors.white,
+                  size: 30,
+                  shadows: dark
+                      ? [
+                          Shadow(
+                            color: AppColors.darkAccent.withValues(alpha: .55),
+                            blurRadius: 8,
+                          ),
+                        ]
+                      : null,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  '从此刻开始记录',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 21,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  '一张照片、一段日常、一个梦。\n把值得珍藏的瞬间留在这里。',
+                  style: TextStyle(color: Color(0xfff1edff), height: 1.55),
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: 156,
+                  child: PrimaryAction(label: '写下第一条  →', onPressed: onCreate),
+                ),
+              ],
             ),
           ],
         ),
       ),
     );
   }
+}
+
+class _EmptyConstellationPainter extends CustomPainter {
+  const _EmptyConstellationPainter();
+
+  static const _points = [
+    Offset(.56, .2),
+    Offset(.7, .1),
+    Offset(.82, .3),
+    Offset(.94, .18),
+    Offset(.75, .53),
+    Offset(.91, .66),
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final line = Paint()
+      ..color = const Color(0xffc4b5fd).withValues(alpha: .22)
+      ..strokeWidth = 1;
+    final star = Paint()..color = AppColors.darkAccent.withValues(alpha: .72);
+    for (var i = 1; i < _points.length; i++) {
+      canvas.drawLine(
+        Offset(_points[i - 1].dx * size.width, _points[i - 1].dy * size.height),
+        Offset(_points[i].dx * size.width, _points[i].dy * size.height),
+        line,
+      );
+    }
+    for (final point in _points) {
+      canvas.drawCircle(
+        Offset(point.dx * size.width, point.dy * size.height),
+        2.1,
+        star,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

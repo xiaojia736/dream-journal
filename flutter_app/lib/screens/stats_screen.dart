@@ -88,10 +88,20 @@ class StatsScreen extends StatelessWidget {
                         children: [
                           Text(
                             '${entries.length}',
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: dark ? AppColors.darkAccent : Colors.white,
                               fontSize: 52,
                               fontWeight: FontWeight.w700,
+                              shadows: dark
+                                  ? [
+                                      Shadow(
+                                        color: AppColors.darkAccent.withValues(
+                                          alpha: .42,
+                                        ),
+                                        blurRadius: 10,
+                                      ),
+                                    ]
+                                  : null,
                             ),
                           ),
                           const SizedBox(width: 6),
@@ -146,7 +156,7 @@ class StatsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 14),
             GlassCard(
-              padding: const EdgeInsets.all(19),
+              padding: const EdgeInsets.all(17),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -231,10 +241,8 @@ class StatsScreen extends StatelessWidget {
                               ),
                             ),
                             Expanded(
-                              child: LinearProgressIndicator(
+                              child: _GlowProgressBar(
                                 value: item.value / peakMood,
-                                borderRadius: BorderRadius.circular(6),
-                                minHeight: 8,
                               ),
                             ),
                             SizedBox(
@@ -278,12 +286,11 @@ class StatsScreen extends StatelessWidget {
                           ),
                           SizedBox(
                             width: 100,
-                            child: LinearProgressIndicator(
+                            child: _GlowProgressBar(
                               value: entries.isEmpty
                                   ? 0
                                   : typeCounts[type]! / entries.length,
-                              borderRadius: BorderRadius.circular(4),
-                              minHeight: 6,
+                              height: 6,
                             ),
                           ),
                           SizedBox(
@@ -338,6 +345,7 @@ class _MetricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
@@ -351,10 +359,14 @@ class _MetricCard extends StatelessWidget {
                 ],
               )
             : null,
-        color: emphasized ? null : Theme.of(context).colorScheme.surface,
+        color: emphasized
+            ? null
+            : dark
+            ? const Color(0xff2d244a).withValues(alpha: .55)
+            : Theme.of(context).colorScheme.surface,
         border: Border.all(
-          color: Theme.of(context).brightness == Brightness.dark
-              ? Colors.white.withValues(alpha: .09)
+          color: dark
+              ? Colors.white.withValues(alpha: .12)
               : AppColors.border(context),
         ),
       ),
@@ -416,12 +428,61 @@ class _StarlightDay extends StatelessWidget {
         Text(
           '${date.day}',
           style: TextStyle(
-            color: active ? starColor : AppColors.muted(context),
-            fontSize: 10,
+            color: active
+                ? starColor
+                : AppColors.muted(context).withValues(alpha: .75),
+            fontSize: 11,
             fontWeight: active ? FontWeight.w600 : FontWeight.w400,
           ),
         ),
       ],
+    );
+  }
+}
+
+class _GlowProgressBar extends StatelessWidget {
+  const _GlowProgressBar({required this.value, this.height = 8});
+
+  final double value;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth * value.clamp(0.0, 1.0);
+        return Container(
+          height: height,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(height),
+            color: dark
+                ? Colors.white.withValues(alpha: .08)
+                : AppColors.lightBorder,
+          ),
+          alignment: Alignment.centerLeft,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            width: width,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(height),
+              gradient: LinearGradient(
+                colors: dark
+                    ? const [Color(0xff7c3aed), Color(0xffec8cff)]
+                    : const [Color(0xffe07a5f), Color(0xffe9c46a)],
+              ),
+              boxShadow: width > 0 && dark
+                  ? [
+                      BoxShadow(
+                        color: const Color(0xffa855f7).withValues(alpha: .52),
+                        blurRadius: 7,
+                      ),
+                    ]
+                  : null,
+            ),
+          ),
+        );
+      },
     );
   }
 }

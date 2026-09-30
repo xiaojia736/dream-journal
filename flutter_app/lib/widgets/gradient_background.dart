@@ -35,7 +35,7 @@ class GradientBackground extends StatelessWidget {
                     : const Alignment(.76, -.9),
                 radius: dark ? 1.05 : .95,
                 colors: dark
-                    ? const [Color(0x303f3477), Color(0x00151226)]
+                    ? const [Color(0x524c3f8f), Color(0x00151226)]
                     : const [Color(0x52ffd9bd), Color(0x00faf7f2)],
               ),
             ),
@@ -48,7 +48,7 @@ class GradientBackground extends StatelessWidget {
                 gradient: RadialGradient(
                   center: Alignment(-.9, .72),
                   radius: .9,
-                  colors: [Color(0x24205665), Color(0x000d0b18)],
+                  colors: [Color(0x36306978), Color(0x000d0b18)],
                 ),
               ),
             ),
@@ -110,6 +110,7 @@ class GlassCard extends StatelessWidget {
     this.margin,
     this.onTap,
     this.radius = 18,
+    this.tint,
   });
 
   final Widget child;
@@ -117,6 +118,7 @@ class GlassCard extends StatelessWidget {
   final EdgeInsetsGeometry? margin;
   final VoidCallback? onTap;
   final double radius;
+  final Color? tint;
 
   @override
   Widget build(BuildContext context) {
@@ -127,9 +129,15 @@ class GlassCard extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: borderRadius,
         boxShadow: [
+          if (dark)
+            BoxShadow(
+              color: AppColors.darkPrimary.withValues(alpha: .1),
+              blurRadius: 18,
+              spreadRadius: -5,
+            ),
           BoxShadow(
             color: (dark ? Colors.black : const Color(0xffb49682)).withValues(
-              alpha: dark ? .24 : .08,
+              alpha: dark ? .2 : .08,
             ),
             blurRadius: 24,
             offset: const Offset(0, 10),
@@ -139,7 +147,7 @@ class GlassCard extends StatelessWidget {
       child: ClipRRect(
         borderRadius: borderRadius,
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
           child: Material(
             color: Colors.transparent,
             child: Ink(
@@ -150,8 +158,10 @@ class GlassCard extends StatelessWidget {
                   end: Alignment.bottomRight,
                   colors: dark
                       ? [
-                          AppColors.darkCard.withValues(alpha: .75),
-                          const Color(0xff171329).withValues(alpha: .7),
+                          (tint ?? const Color(0xff2d244a)).withValues(
+                            alpha: .6,
+                          ),
+                          const Color(0xff16122a).withValues(alpha: .7),
                         ]
                       : [
                           Colors.white.withValues(alpha: .9),
@@ -159,7 +169,9 @@ class GlassCard extends StatelessWidget {
                         ],
                 ),
                 border: Border.all(
-                  color: dark ? AppColors.darkBorder : const Color(0xfffffdf9),
+                  color: dark
+                      ? Colors.white.withValues(alpha: .12)
+                      : const Color(0xfffffdf9),
                 ),
               ),
               child: InkWell(
@@ -226,29 +238,56 @@ class PrimaryAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 54,
-      child: FilledButton(
-        onPressed: busy ? null : onPressed,
-        style: FilledButton.styleFrom(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final enabled = !busy && onPressed != null;
+    return Opacity(
+      opacity: enabled || busy ? 1 : .5,
+      child: Container(
+        width: double.infinity,
+        height: 54,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            colors: dark
+                ? const [Color(0xff7c3aed), Color(0xffa855f7)]
+                : const [Color(0xffe07a5f), Color(0xffe9a66e)],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: (dark ? const Color(0xffa78bfa) : AppColors.lightPrimary)
+                  .withValues(alpha: .35),
+              blurRadius: 12,
+              spreadRadius: -2,
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: enabled ? onPressed : null,
+            child: Center(
+              child: busy
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(
+                      label,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                    ),
+            ),
           ),
         ),
-        child: busy
-            ? const SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : Text(
-                label,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16,
-                ),
-              ),
       ),
     );
   }

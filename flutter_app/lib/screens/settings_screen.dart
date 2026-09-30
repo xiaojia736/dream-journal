@@ -99,6 +99,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 22),
             const _SectionLabel('外观与隐私'),
             _SettingsGroup(
+              dataTone: true,
               children: [
                 _SettingsRow(
                   icon: state.isDark
@@ -241,14 +242,18 @@ class _SectionLabel extends StatelessWidget {
 }
 
 class _SettingsGroup extends StatelessWidget {
-  const _SettingsGroup({required this.children});
+  const _SettingsGroup({required this.children, this.dataTone = false});
 
   final List<_SettingsRow> children;
+  final bool dataTone;
 
   @override
   Widget build(BuildContext context) {
     return GlassCard(
       padding: EdgeInsets.zero,
+      tint: dataTone && Theme.of(context).brightness == Brightness.dark
+          ? const Color(0xff243d4a)
+          : null,
       child: Column(
         children: [
           for (var i = 0; i < children.length; i++) ...[

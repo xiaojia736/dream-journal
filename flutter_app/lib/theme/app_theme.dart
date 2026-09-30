@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 abstract final class AppColors {
   static const darkBackground = Color(0xff0d0b18);
   static const darkCard = Color(0xff1f1a35);
-  static const darkText = Color(0xffe9ecef);
-  static const darkMuted = Color(0xff8f8ba0);
-  static const darkPrimary = Color(0xff8a70d6);
+  static const darkText = Color(0xfff8fafc);
+  static const darkMuted = Color(0xffa5a1b8);
+  static const darkPrimary = Color(0xffa78bfa);
   static const darkBlue = Color(0xff70c1b3);
-  static const darkAccent = Color(0xffffeaa7);
-  static const darkBorder = Color(0xff382f5e);
-  static const darkSoft = Color(0xff29223f);
+  static const darkAccent = Color(0xffffe082);
+  static const darkBorder = Color(0xff51456f);
+  static const darkSoft = Color(0xff352c55);
 
   static const lightBackground = Color(0xfffaf7f2);
   static const lightCard = Color(0xffffffff);
@@ -98,7 +98,7 @@ abstract final class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: brightness == Brightness.dark
-            ? card.withValues(alpha: .72)
+            ? const Color(0xff2d244a).withValues(alpha: .5)
             : card.withValues(alpha: .82),
         isDense: true,
         contentPadding: const EdgeInsets.symmetric(
@@ -113,7 +113,7 @@ abstract final class AppTheme {
           borderRadius: BorderRadius.circular(15),
           borderSide: BorderSide(
             color: brightness == Brightness.dark
-                ? AppColors.darkBorder
+                ? Colors.white.withValues(alpha: .1)
                 : AppColors.lightBorder,
           ),
         ),
@@ -131,6 +131,25 @@ abstract final class AppTheme {
             : AppColors.lightBorder,
         thickness: 1,
         space: 1,
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: brightness == Brightness.dark
+            ? const Color(0xff2d244a).withValues(alpha: .34)
+            : AppColors.lightSoft,
+        selectedColor: brightness == Brightness.dark
+            ? AppColors.darkPrimary.withValues(alpha: .25)
+            : AppColors.lightPrimary.withValues(alpha: .16),
+        side: BorderSide(
+          color: brightness == Brightness.dark
+              ? Colors.white.withValues(alpha: .08)
+              : AppColors.lightBorder,
+        ),
+        shape: const StadiumBorder(),
+        labelStyle: TextStyle(
+          color: brightness == Brightness.dark
+              ? AppColors.darkMuted
+              : AppColors.lightMuted,
+        ),
       ),
     );
   }
