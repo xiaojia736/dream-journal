@@ -1,6 +1,6 @@
 // Service Worker for Dream Journal PWA
 
-const CACHE_NAME = 'dream-journal-v1';
+const CACHE_NAME = 'dream-journal-v2';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

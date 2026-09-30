@@ -1,6 +1,6 @@
 {
-  "name": "梦境日记",
-  "short_name": "梦境日记",
+  "name": "星海日记",
+  "short_name": "星海日记",
   "description": "私密的梦境与心情记录空间",
   "start_url": "./index.html",
   "display": "standalone",
