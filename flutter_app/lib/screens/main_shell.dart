@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
 import 'home_screen.dart';
 import 'settings_screen.dart';
 import 'stats_screen.dart';
@@ -21,26 +22,111 @@ class _MainShellState extends State<MainShell> {
         index: _index,
         children: const [HomeScreen(), StatsScreen(), SettingsScreen()],
       ),
-      bottomNavigationBar: NavigationBar(
+      bottomNavigationBar: _StarlightNavigation(
         selectedIndex: _index,
-        onDestinationSelected: (value) => setState(() => _index = value),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.auto_awesome_outlined),
-            selectedIcon: Icon(Icons.auto_awesome),
-            label: '记录',
+        onSelected: (value) => setState(() => _index = value),
+      ),
+    );
+  }
+}
+
+class _StarlightNavigation extends StatelessWidget {
+  const _StarlightNavigation({
+    required this.selectedIndex,
+    required this.onSelected,
+  });
+
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+
+  static const _items = [
+    (Icons.auto_awesome_outlined, Icons.auto_awesome, '记录'),
+    (Icons.grid_view_outlined, Icons.grid_view_rounded, '图鉴'),
+    (Icons.tune_outlined, Icons.tune_rounded, '设置'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: (dark ? AppColors.darkCard : Colors.white).withValues(
+          alpha: .94,
+        ),
+        border: Border(
+          top: BorderSide(
+            color: AppColors.border(context).withValues(alpha: .55),
           ),
-          NavigationDestination(
-            icon: Icon(Icons.grid_view_outlined),
-            selectedIcon: Icon(Icons.grid_view_rounded),
-            label: '图鉴',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.tune_outlined),
-            selectedIcon: Icon(Icons.tune),
-            label: '设置',
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: dark ? .22 : .06),
+            blurRadius: 24,
+            offset: const Offset(0, -6),
           ),
         ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 64,
+          child: Row(
+            children: List.generate(_items.length, (index) {
+              final selected = index == selectedIndex;
+              final item = _items[index];
+              return Expanded(
+                child: InkWell(
+                  onTap: () => onSelected(index),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        selected ? item.$2 : item.$1,
+                        size: 22,
+                        color: selected
+                            ? Theme.of(context).colorScheme.primary
+                            : AppColors.muted(context),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        item.$3,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: selected
+                              ? FontWeight.w600
+                              : FontWeight.w400,
+                          color: selected
+                              ? Theme.of(context).colorScheme.primary
+                              : AppColors.muted(context),
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 220),
+                        width: selected ? 4 : 0,
+                        height: selected ? 4 : 0,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.darkAccent,
+                          boxShadow: selected
+                              ? [
+                                  BoxShadow(
+                                    color: AppColors.darkAccent.withValues(
+                                      alpha: .7,
+                                    ),
+                                    blurRadius: 7,
+                                  ),
+                                ]
+                              : null,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
       ),
     );
   }

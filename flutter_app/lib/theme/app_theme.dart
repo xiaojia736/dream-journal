@@ -1,23 +1,24 @@
 import 'package:flutter/material.dart';
 
 abstract final class AppColors {
-  static const darkBackground = Color(0xff10152e);
-  static const darkCard = Color(0xff1d2748);
-  static const darkText = Color(0xfff7f4ff);
-  static const darkMuted = Color(0xffabb6d5);
-  static const darkPrimary = Color(0xffbeb6ff);
-  static const darkAccent = Color(0xffffd6ad);
-  static const darkBorder = Color(0xff384467);
-  static const darkSoft = Color(0xff27345c);
+  static const darkBackground = Color(0xff0d0b18);
+  static const darkCard = Color(0xff1f1a35);
+  static const darkText = Color(0xffe9ecef);
+  static const darkMuted = Color(0xff8f8ba0);
+  static const darkPrimary = Color(0xff8a70d6);
+  static const darkBlue = Color(0xff70c1b3);
+  static const darkAccent = Color(0xffffeaa7);
+  static const darkBorder = Color(0xff382f5e);
+  static const darkSoft = Color(0xff29223f);
 
-  static const lightBackground = Color(0xfff6f5ff);
+  static const lightBackground = Color(0xfffaf7f2);
   static const lightCard = Color(0xffffffff);
-  static const lightText = Color(0xff252740);
-  static const lightMuted = Color(0xff6d7291);
-  static const lightPrimary = Color(0xff665fa6);
-  static const lightAccent = Color(0xffb87752);
-  static const lightBorder = Color(0xffe5e1f1);
-  static const lightSoft = Color(0xffefedfa);
+  static const lightText = Color(0xff2d2624);
+  static const lightMuted = Color(0xff8c827a);
+  static const lightPrimary = Color(0xffe07a5f);
+  static const lightAccent = Color(0xffe9c46a);
+  static const lightBorder = Color(0xffe8ddd5);
+  static const lightSoft = Color(0xfff7e7dd);
 
   static Color muted(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark ? darkMuted : lightMuted;
@@ -57,11 +58,19 @@ abstract final class AppTheme {
     required Color text,
     required Color primary,
   }) {
-    final scheme = ColorScheme.fromSeed(
-      seedColor: primary,
-      brightness: brightness,
-      surface: card,
-    ).copyWith(primary: primary, onSurface: text, surface: card);
+    final scheme =
+        ColorScheme.fromSeed(
+          seedColor: primary,
+          brightness: brightness,
+          surface: card,
+        ).copyWith(
+          primary: primary,
+          secondary: brightness == Brightness.dark
+              ? AppColors.darkAccent
+              : AppColors.lightAccent,
+          onSurface: text,
+          surface: card,
+        );
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
@@ -78,7 +87,7 @@ abstract final class AppTheme {
         color: card,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(18),
           side: BorderSide(
             color: brightness == Brightness.dark
                 ? AppColors.darkBorder
@@ -88,7 +97,14 @@ abstract final class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: card,
+        fillColor: brightness == Brightness.dark
+            ? card.withValues(alpha: .72)
+            : card.withValues(alpha: .82),
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 12,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(15),
           borderSide: BorderSide.none,
@@ -105,6 +121,16 @@ abstract final class AppTheme {
           borderRadius: BorderRadius.circular(15),
           borderSide: BorderSide(color: primary, width: 1.5),
         ),
+      ),
+      textTheme: ThemeData(
+        brightness: brightness,
+      ).textTheme.apply(bodyColor: text, displayColor: text),
+      dividerTheme: DividerThemeData(
+        color: brightness == Brightness.dark
+            ? AppColors.darkBorder.withValues(alpha: .52)
+            : AppColors.lightBorder,
+        thickness: 1,
+        space: 1,
       ),
     );
   }

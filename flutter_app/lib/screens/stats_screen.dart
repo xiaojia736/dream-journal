@@ -12,6 +12,7 @@ class StatsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final entries = AppStateScope.of(context).entries;
+    final dark = Theme.of(context).brightness == Brightness.dark;
     final typeCounts = {for (final type in EntryType.values) type: 0};
     final moodCounts = <Mood, int>{};
     final days = <String>{};
@@ -42,251 +43,263 @@ class StatsScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(22),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xff394a81), Color(0xff6b5b9f)],
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: dark
+                      ? const [Color(0xff28204f), Color(0xff51417c)]
+                      : const [Color(0xffe07a5f), Color(0xffe9a66e)],
                 ),
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    color:
+                        (dark ? AppColors.darkPrimary : AppColors.lightPrimary)
+                            .withValues(alpha: .24),
+                    blurRadius: 24,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Stack(
                 children: [
-                  const Text(
-                    '累计记录',
-                    style: TextStyle(
-                      color: Color(0xffefecff),
-                      letterSpacing: 1,
+                  const Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Icon(
+                      Icons.auto_awesome,
+                      color: Color(0x66ffffff),
+                      size: 34,
                     ),
                   ),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        '${entries.length}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 52,
-                          fontWeight: FontWeight.w900,
+                      const Text(
+                        '累计记录',
+                        style: TextStyle(
+                          color: Color(0xffefecff),
+                          letterSpacing: 1,
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      const Text(
-                        '段珍贵的记忆',
-                        style: TextStyle(
-                          color: Color(0xfff3eeff),
-                          fontSize: 16,
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
+                        children: [
+                          Text(
+                            '${entries.length}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 52,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          const Text(
+                            '段珍贵的记忆',
+                            style: TextStyle(
+                              color: Color(0xfff3eeff),
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        entries.isEmpty
+                            ? '从今天开始，留住生活里的一点光。'
+                            : '生活、心情与梦，都在这里留下了痕迹。',
+                        style: const TextStyle(
+                          color: Color(0xffede9ff),
+                          height: 1.5,
                         ),
                       ),
                     ],
                   ),
-                  Text(
-                    entries.isEmpty ? '从今天开始，留住生活里的一点光。' : '生活、心情与梦，都在这里留下了痕迹。',
-                    style: const TextStyle(
-                      color: Color(0xffede9ff),
-                      height: 1.5,
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: _MetricCard(
+                      icon: Icons.local_fire_department_outlined,
+                      value: _streak(entries),
+                      label: '连续记录天数',
+                      emphasized: true,
+                    ),
+                  ),
+                  const SizedBox(width: 11),
+                  Expanded(
+                    flex: 2,
+                    child: _MetricCard(
+                      icon: Icons.photo_library_outlined,
+                      value: photoCount,
+                      label: '收藏的照片',
                     ),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: _MetricCard(
-                    icon: Icons.local_fire_department_outlined,
-                    value: _streak(entries),
-                    label: '连续记录天数',
-                  ),
-                ),
-                const SizedBox(width: 11),
-                Expanded(
-                  child: _MetricCard(
-                    icon: Icons.photo_library_outlined,
-                    value: photoCount,
-                    label: '收藏的照片',
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(19),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          '最近 28 天',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                          ),
+            GlassCard(
+              padding: const EdgeInsets.all(19),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        '最近 28 天',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
                         ),
-                        Text(
-                          '点亮 ${activeDays.where((day) => day.active).length} 天',
-                          style: TextStyle(
-                            color: AppColors.muted(context),
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-                    GridView.count(
-                      crossAxisCount: 7,
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      mainAxisSpacing: 8,
-                      crossAxisSpacing: 8,
-                      children: [
-                        for (final day in activeDays)
-                          Container(
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: day.active
-                                  ? Theme.of(context).colorScheme.primary
-                                  : AppColors.soft(context),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              '${day.date.day}',
-                              style: TextStyle(
-                                color: day.active
-                                    ? Theme.of(context).colorScheme.onPrimary
-                                    : AppColors.muted(context),
-                                fontSize: 11,
-                                fontWeight: day.active
-                                    ? FontWeight.w800
-                                    : FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 14),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(19),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '心情足迹',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
                       ),
-                    ),
-                    const SizedBox(height: 17),
-                    if (moodCounts.isEmpty)
                       Text(
-                        '记录心情后，这里会慢慢画出你的情绪星图。',
+                        '点亮 ${activeDays.where((day) => day.active).length} 天',
                         style: TextStyle(
                           color: AppColors.muted(context),
-                          height: 1.5,
+                          fontSize: 12,
                         ),
-                      )
-                    else
-                      for (final item
-                          in moodCounts.entries.toList()
-                            ..sort((a, b) => b.value.compareTo(a.value)))
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 13),
-                          child: Row(
-                            children: [
-                              SizedBox(
-                                width: 82,
-                                child: Text(
-                                  '${item.key.emoji} ${item.key.label}',
-                                  style: const TextStyle(fontSize: 13),
-                                ),
-                              ),
-                              Expanded(
-                                child: LinearProgressIndicator(
-                                  value: item.value / peakMood,
-                                  borderRadius: BorderRadius.circular(6),
-                                  minHeight: 8,
-                                ),
-                              ),
-                              SizedBox(
-                                width: 30,
-                                child: Text(
-                                  '${item.value}',
-                                  textAlign: TextAlign.end,
-                                  style: TextStyle(
-                                    color: AppColors.muted(context),
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                            ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  Stack(
+                    children: [
+                      Positioned.fill(
+                        child: CustomPaint(
+                          painter: _ConstellationPainter(
+                            activeDays.map((day) => day.active).toList(),
+                            dark: dark,
                           ),
                         ),
-                  ],
-                ),
+                      ),
+                      GridView.count(
+                        crossAxisCount: 7,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        mainAxisSpacing: 6,
+                        crossAxisSpacing: 6,
+                        children: [
+                          for (final day in activeDays)
+                            _StarlightDay(date: day.date, active: day.active),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 14),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(19),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '记录分类',
+            GlassCard(
+              padding: const EdgeInsets.all(19),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '心情足迹',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 17),
+                  if (moodCounts.isEmpty)
+                    Text(
+                      '记录心情后，这里会慢慢画出你的情绪星图。',
                       style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
+                        color: AppColors.muted(context),
+                        height: 1.5,
                       ),
-                    ),
-                    const SizedBox(height: 17),
-                    for (final type in EntryType.values)
+                    )
+                  else
+                    for (final item
+                        in moodCounts.entries.toList()
+                          ..sort((a, b) => b.value.compareTo(a.value)))
                       Padding(
                         padding: const EdgeInsets.only(bottom: 13),
                         child: Row(
                           children: [
-                            Expanded(
+                            SizedBox(
+                              width: 82,
                               child: Text(
-                                type.label,
+                                '${item.key.emoji} ${item.key.label}',
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                            ),
+                            Expanded(
+                              child: LinearProgressIndicator(
+                                value: item.value / peakMood,
+                                borderRadius: BorderRadius.circular(6),
+                                minHeight: 8,
+                              ),
+                            ),
+                            SizedBox(
+                              width: 30,
+                              child: Text(
+                                '${item.value}',
+                                textAlign: TextAlign.end,
                                 style: TextStyle(
                                   color: AppColors.muted(context),
-                                ),
-                              ),
-                            ),
-                            SizedBox(
-                              width: 100,
-                              child: LinearProgressIndicator(
-                                value: entries.isEmpty
-                                    ? 0
-                                    : typeCounts[type]! / entries.length,
-                                borderRadius: BorderRadius.circular(4),
-                                minHeight: 6,
-                              ),
-                            ),
-                            SizedBox(
-                              width: 34,
-                              child: Text(
-                                '${typeCounts[type]}',
-                                textAlign: TextAlign.end,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
+                                  fontSize: 12,
                                 ),
                               ),
                             ),
                           ],
                         ),
                       ),
-                  ],
-                ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            GlassCard(
+              padding: const EdgeInsets.all(19),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '记录分类',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 17),
+                  for (final type in EntryType.values)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 13),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              type.label,
+                              style: TextStyle(color: AppColors.muted(context)),
+                            ),
+                          ),
+                          SizedBox(
+                            width: 100,
+                            child: LinearProgressIndicator(
+                              value: entries.isEmpty
+                                  ? 0
+                                  : typeCounts[type]! / entries.length,
+                              borderRadius: BorderRadius.circular(4),
+                              minHeight: 6,
+                            ),
+                          ),
+                          SizedBox(
+                            width: 34,
+                            child: Text(
+                              '${typeCounts[type]}',
+                              textAlign: TextAlign.end,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
               ),
             ),
           ],
@@ -315,16 +328,36 @@ class _MetricCard extends StatelessWidget {
     required this.icon,
     required this.value,
     required this.label,
+    this.emphasized = false,
   });
 
   final IconData icon;
   final int value;
   final String label;
+  final bool emphasized;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: EdgeInsets.zero,
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        gradient: emphasized
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Theme.of(context).colorScheme.primary.withValues(alpha: .28),
+                  AppColors.soft(context).withValues(alpha: .72),
+                ],
+              )
+            : null,
+        color: emphasized ? null : Theme.of(context).colorScheme.surface,
+        border: Border.all(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.white.withValues(alpha: .09)
+              : AppColors.border(context),
+        ),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(18),
         child: Column(
@@ -334,7 +367,7 @@ class _MetricCard extends StatelessWidget {
             const SizedBox(height: 7),
             Text(
               '$value',
-              style: const TextStyle(fontSize: 27, fontWeight: FontWeight.w900),
+              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700),
             ),
             Text(
               label,
@@ -344,5 +377,97 @@ class _MetricCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _StarlightDay extends StatelessWidget {
+  const _StarlightDay({required this.date, required this.active});
+
+  final DateTime date;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final starColor = dark ? AppColors.darkAccent : AppColors.lightPrimary;
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        if (active)
+          Icon(
+            Icons.auto_awesome,
+            size: 15,
+            color: starColor,
+            shadows: [
+              Shadow(color: starColor.withValues(alpha: .9), blurRadius: 9),
+              Shadow(color: starColor.withValues(alpha: .45), blurRadius: 15),
+            ],
+          )
+        else
+          Container(
+            width: 5,
+            height: 5,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.muted(context).withValues(alpha: .25),
+            ),
+          ),
+        const SizedBox(height: 5),
+        Text(
+          '${date.day}',
+          style: TextStyle(
+            color: active ? starColor : AppColors.muted(context),
+            fontSize: 10,
+            fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ConstellationPainter extends CustomPainter {
+  const _ConstellationPainter(this.active, {required this.dark});
+
+  final List<bool> active;
+  final bool dark;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const gap = 6.0;
+    final cellWidth = (size.width - gap * 6) / 7;
+    final cellHeight = (size.height - gap * 3) / 4;
+    final color = dark ? AppColors.darkAccent : AppColors.lightPrimary;
+    final paint = Paint()
+      ..color = color.withValues(alpha: dark ? .2 : .14)
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+    for (var i = 1; i < active.length; i++) {
+      if (!active[i] || !active[i - 1]) continue;
+      final from = _point(i - 1, cellWidth, cellHeight, gap);
+      final to = _point(i, cellWidth, cellHeight, gap);
+      canvas.drawLine(from, to, paint);
+    }
+  }
+
+  Offset _point(int index, double cellWidth, double cellHeight, double gap) {
+    final column = index % 7;
+    final row = index ~/ 7;
+    return Offset(
+      column * (cellWidth + gap) + cellWidth / 2,
+      row * (cellHeight + gap) + cellHeight / 2 - 6,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_ConstellationPainter oldDelegate) =>
+      oldDelegate.dark != dark || !_sameDays(oldDelegate.active, active);
+
+  bool _sameDays(List<bool> a, List<bool> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 }
