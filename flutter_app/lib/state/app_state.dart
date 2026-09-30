@@ -17,19 +17,48 @@ class AppState extends ChangeNotifier {
   bool _isDark = true;
   String _pin = '';
   bool _locked = false;
+  bool _initialized = false;
+  bool _initializing = false;
+  Object? _initializationError;
 
   List<JournalEntry> get entries => _entries;
   bool get isDark => _isDark;
   bool get hasPin => _pin.isNotEmpty;
   bool get locked => _locked;
+  bool get initialized => _initialized;
+  Object? get initializationError => _initializationError;
 
   Future<void> initialize() async {
-    await _repository.initialize();
-    final preferences = await SharedPreferences.getInstance();
-    _isDark = preferences.getString(_themeKey) != 'light';
-    _pin = await _secureStorage.read(key: _pinKey) ?? '';
-    _locked = _pin.isNotEmpty;
-    await refresh();
+    if (_initializing) return;
+    _initializing = true;
+    _initialized = false;
+    _initializationError = null;
+    notifyListeners();
+    try {
+      final repositoryFuture = _repository.initialize();
+      final preferencesFuture = SharedPreferences.getInstance();
+      final pinFuture = _secureStorage.read(key: _pinKey);
+
+      await repositoryFuture;
+      final preferences = await preferencesFuture;
+      _isDark = preferences.getString(_themeKey) != 'light';
+      _pin = await pinFuture ?? '';
+      _locked = _pin.isNotEmpty;
+      _entries = await _repository.listEntries();
+    } catch (error, stackTrace) {
+      _initializationError = error;
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stackTrace,
+          library: '星海日记初始化',
+        ),
+      );
+    } finally {
+      _initializing = false;
+      _initialized = _initializationError == null;
+      notifyListeners();
+    }
   }
 
   JournalEntry? entryById(String id) {
