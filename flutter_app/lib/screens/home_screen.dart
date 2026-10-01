@@ -172,47 +172,33 @@ class _HomeScreenState extends State<HomeScreen>
                         const SizedBox(height: 10),
                         SizedBox(
                           height: 35,
-                          child: Stack(
-                            children: [
-                              ListView(
-                                scrollDirection: Axis.horizontal,
-                                padding: const EdgeInsets.only(right: 28),
-                                children: [
-                                  _FilterChip(
-                                    label: '全部',
-                                    selected: _filter == null,
-                                    onTap: () => setState(() => _filter = null),
-                                  ),
-                                  for (final type in EntryType.values)
-                                    _FilterChip(
-                                      label: type.label,
-                                      selected: _filter == type,
-                                      onTap: () =>
-                                          setState(() => _filter = type),
-                                    ),
-                                ],
-                              ),
-                              Positioned(
-                                top: 0,
-                                right: 0,
-                                bottom: 0,
-                                child: IgnorePointer(
-                                  child: Container(
-                                    width: 30,
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          Colors.transparent,
-                                          Theme.of(
-                                            context,
-                                          ).scaffoldBackgroundColor,
-                                        ],
-                                      ),
-                                    ),
-                                  ),
+                          child: ShaderMask(
+                            blendMode: BlendMode.dstIn,
+                            shaderCallback: (bounds) => const LinearGradient(
+                              stops: [0, .91, 1],
+                              colors: [
+                                Colors.white,
+                                Colors.white,
+                                Colors.transparent,
+                              ],
+                            ).createShader(bounds),
+                            child: ListView(
+                              scrollDirection: Axis.horizontal,
+                              padding: const EdgeInsets.only(right: 30),
+                              children: [
+                                _FilterChip(
+                                  label: '全部',
+                                  selected: _filter == null,
+                                  onTap: () => setState(() => _filter = null),
                                 ),
-                              ),
-                            ],
+                                for (final type in EntryType.values)
+                                  _FilterChip(
+                                    label: type.label,
+                                    selected: _filter == type,
+                                    onTap: () => setState(() => _filter = type),
+                                  ),
+                              ],
+                            ),
                           ),
                         ),
                         const SizedBox(height: 15),
@@ -379,7 +365,7 @@ class _HomeSubtitle extends StatelessWidget {
       TextSpan(
         style: base,
         children: [
-          const TextSpan(text: '朋友，收藏生活中每一颗'),
+          const TextSpan(text: '佳佳，收藏生活中每一颗'),
           TextSpan(
             text: '微光',
             style: TextStyle(
