@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/journal_repository.dart';
 import '../models/journal_entry.dart';
+import '../utils/journal_limits.dart';
 
 class AppState extends ChangeNotifier {
   static const _themeKey = 'theme';
@@ -79,13 +80,21 @@ class AppState extends ChangeNotifier {
     required List<String> removedPhotoIds,
     required List<XFile> newPhotos,
   }) async {
+    final removed = List<String>.unmodifiable(removedPhotoIds);
+    final pending = List<XFile>.unmodifiable(newPhotos);
+    final existing = id == null ? null : entryById(id);
+    final retainedCount =
+        existing?.photos.where((photo) => !removed.contains(photo.id)).length ?? 0;
+    if (!isEntryPhotoCountAllowed(retainedCount + pending.length)) {
+      throw StateError('每条记录最多添加 $maxEntryPhotos 张照片');
+    }
     final saved = id == null
         ? await _repository.createEntry(draft)
         : await _repository.updateEntry(id, draft);
-    for (final photoId in removedPhotoIds) {
+    for (final photoId in removed) {
       await _repository.removePhoto(photoId);
     }
-    for (final photo in newPhotos) {
+    for (final photo in pending) {
       await _repository.addPhoto(saved.id, photo);
     }
     await refresh();

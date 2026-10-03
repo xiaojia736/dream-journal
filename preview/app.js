@@ -3,6 +3,7 @@
   'use strict';
   const STORAGE_KEY = 'star-sea-preview-v1';
   const BACKUP_FORMAT = 'star-sea-journal-web-preview-v1';
+  const MAX_PHOTOS = 9;
   const TYPES = { moment: '生活', dream: '梦境', diary: '日记', os: '内心 OS' };
   const MOODS = { happy: ['sun', '开心'], calm: ['moon', '平静'], sad: ['droplet', '难过'], anxious: ['wind', '焦虑'], excited: ['starlight', '兴奋'], confused: ['cloud', '困惑'], scared: ['shield', '恐惧'] };
   const paths = {
@@ -50,6 +51,45 @@
   const headingDate = () => new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }).format(new Date());
   const detailDate = value => new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long', hour: '2-digit', minute: '2-digit' }).format(new Date(value));
 
+  // Calendar dates use local civil days, never UTC parsing of YYYY-MM-DD.
+  const calendarDate = key => { const [year, month, day] = key.split('-').map(Number); return new Date(year, month - 1, day, 12); };
+  const calendarMonthLength = (year, month) => new Date(year, month, 0, 12).getDate();
+  function calendarShift(monthKey, dayKey, delta) {
+    const [year, month] = monthKey.split('-').map(Number);
+    const index = year * 12 + month - 1 + delta;
+    if (index < 1900 * 12 || index > 2100 * 12 + 11) return { month: monthKey, day: dayKey };
+    const nextYear = Math.floor(index / 12); const nextMonth = index % 12 + 1;
+    const day = Math.min(Number(dayKey.split('-')[2]), calendarMonthLength(nextYear, nextMonth));
+    const nextDay = localDate(new Date(nextYear, nextMonth - 1, day, 12));
+    return { month: nextDay.slice(0, 7), day: nextDay };
+  }
+  function calendarCells(monthKey) {
+    const [year, month] = monthKey.split('-').map(Number);
+    const offset = (new Date(year, month - 1, 1, 12).getDay() + 6) % 7;
+    const count = calendarMonthLength(year, month);
+    return Array.from({ length: Math.ceil((offset + count) / 7) * 7 }, (_, index) => index < offset || index >= offset + count ? null : `${monthKey}-${String(index - offset + 1).padStart(2, '0')}`);
+  }
+  function calendarBuckets(list) {
+    const days = new Map();
+    const timestamp = value => { const time = new Date(value ?? '').getTime(); return Number.isFinite(time) ? time : 0; };
+    const compare = (a, b) => {
+      const timeOrder = timestamp(b.occurredAt) - timestamp(a.occurredAt) || timestamp(b.updatedAt) - timestamp(a.updatedAt);
+      if (timeOrder) return timeOrder;
+      const firstId = String(a.id ?? ''); const secondId = String(b.id ?? '');
+      return firstId < secondId ? -1 : firstId > secondId ? 1 : 0;
+    };
+    for (const entry of list.slice().sort(compare)) {
+      const date = new Date(entry.occurredAt); if (Number.isNaN(date.getTime())) continue;
+      const day = localDate(date); if (!days.has(day)) days.set(day, []); days.get(day).push(entry);
+    }
+    return days;
+  }
+  function calendarMoods(list) {
+    const seen = new Set(); const moods = [];
+    for (const entry of list) { const mood = moodInfo(entry); if (mood && !seen.has(mood.key)) { seen.add(mood.key); moods.push(mood); } }
+    return moods;
+  }
+
   // Small illustrations are sample photo content, never page wallpapers.
   const samplePhoto = (background, shapes) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="500" height="400" viewBox="0 0 500 400"><rect width="500" height="400" fill="${background}"/>${shapes}</svg>`)}`;
   const illustrations = [
@@ -69,7 +109,7 @@
   let personal = [];
   try { const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); if (Array.isArray(stored)) personal = stored.map(entry => ({ ...entry, customMood: customMood(entry) })); } catch (_) { /* Private modes may disable browser storage. */ }
   const quoteForDate = date => window.StarSeaDailyQuotes?.forDate(date) || '每一个认真生活的日子，都值得被温柔收藏。';
-  const state = { mode: 'demo', tab: 'home', view: 'main', filter: '', search: '', dark: true, detailId: null, detailOrigin: 'main', photoIndex: 0, draft: null, demo: makeDemo(), pinEnabled: false, reviewDate: null, lastReviewDate: null, reviewScroll: 0, galleryItems: null, galleryVersion: -1, galleryScroll: 0, dataVersion: 0, quoteDay: localDate(new Date()), dailyQuote: quoteForDate(new Date()) };
+  const state = { mode: 'demo', tab: 'home', view: 'main', filter: '', search: '', dark: true, detailId: null, detailOrigin: 'main', photoIndex: 0, draft: null, photoLoading: false, demo: makeDemo(), pinEnabled: false, reviewDate: null, reviewOrigin: 'random', lastReviewDate: null, reviewScroll: 0, galleryItems: null, galleryVersion: -1, galleryScroll: 0, dataVersion: 0, calendarMonth: localDate(new Date()).slice(0, 7), calendarDay: localDate(new Date()), calendarScroll: 0, quoteDay: localDate(new Date()), dailyQuote: quoteForDate(new Date()) };
   const entries = () => (state.mode === 'demo' ? state.demo : state.mode === 'empty' ? [] : personal).slice().sort((a, b) => new Date(b.occurredAt) - new Date(a.occurredAt));
   const findEntry = id => entries().find(entry => entry.id === id);
   let toastTimer;
@@ -86,11 +126,11 @@
     byId('phone-canvas').classList.toggle('light', !state.dark);
     byId('app-content').classList.toggle('full-height', state.view !== 'main');
     byId('app-content').classList.toggle('editor-content', state.view === 'editor');
-    byId('editor-action').innerHTML = state.view === 'editor' ? `<div class="editor-footer"><button type="button" class="primary-button" data-action="save">${icon('check')} 保存记录</button></div>` : '';
+    byId('editor-action').innerHTML = state.view === 'editor' ? `<div class="editor-footer"><button type="button" class="primary-button" data-action="save" ${state.photoLoading ? 'disabled' : ''}>${icon('check')} ${state.photoLoading ? '正在读取照片…' : '保存记录'}</button></div>` : '';
     byId('bottom-nav').hidden = state.view !== 'main';
     byId('bottom-nav').style.display = state.view === 'main' ? '' : 'none';
     byId('bottom-nav').innerHTML = [['home', 'sparkle', '记录'], ['stats', 'grid', '我的星海'], ['settings', 'moon', '片刻']].map(([tab, symbol, label]) => `<button type="button" data-action="tab" data-tab="${tab}" class="${state.tab === tab ? 'active' : ''}" aria-current="${state.tab === tab ? 'page' : 'false'}">${icon(symbol)}<span>${label}</span></button>`).join('');
-    byId('floating-action').innerHTML = state.view === 'main' && state.tab === 'home' && entries().length ? `<button type="button" class="write-fab" data-action="compose" aria-label="记录此刻">${icon(state.dark ? 'sparkle' : 'edit')}</button>` : '';
+    byId('floating-action').innerHTML = state.view === 'main' && state.tab === 'home' ? `<button type="button" class="write-fab" data-action="compose" aria-label="记录此刻">${icon(state.dark ? 'sparkle' : 'edit')}</button>` : '';
     byId('app-content').innerHTML = state.view === 'editor' ? editorView() : state.view === 'detail' ? detailView() : state.view === 'review' ? reviewView() : state.tab === 'stats' ? statsView() : state.tab === 'settings' ? settingsView() : homeView();
     byId('app-content').scrollTop = keepScroll ? scroll : 0;
   }
@@ -117,7 +157,7 @@
     </button>`;
   }
   function resetReview() {
-    state.reviewDate = null; state.lastReviewDate = null; state.reviewScroll = 0; state.detailOrigin = 'main';
+    state.reviewDate = null; state.lastReviewDate = null; state.reviewScroll = 0; state.reviewOrigin = 'random'; state.detailOrigin = 'main';
   }
   function openRandomReview() {
     const today = localDate(new Date());
@@ -129,20 +169,25 @@
     }
     const candidates = days.length > 1 ? days.filter(day => day !== state.lastReviewDate) : days;
     state.reviewDate = candidates[Math.floor(Math.random() * candidates.length)];
-    state.lastReviewDate = state.reviewDate; state.reviewScroll = 0; state.view = 'review'; state.detailOrigin = 'main';
+    state.lastReviewDate = state.reviewDate; state.reviewScroll = 0; state.reviewOrigin = 'random'; state.view = 'review'; state.detailOrigin = 'main';
     render();
   }
   function reviewView() {
     const day = state.reviewDate;
     const list = entries().filter(entry => localDate(new Date(entry.occurredAt)) === day).sort((a, b) => new Date(a.occurredAt) - new Date(b.occurredAt));
-    return `<div class="review-return"><button type="button" class="icon-button" data-action="back" aria-label="返回记录">${icon('back')}</button></div><section class="page review-page">${list.map(entry => entryCard(entry, { fullContent: true })).join('')}</section>`;
+    return `<div class="review-return"><button type="button" class="icon-button" data-action="back" aria-label="${state.reviewOrigin === 'calendar' ? '返回片刻' : '返回记录'}">${icon('back')}</button></div><section class="page review-page">${list.length ? list.map(entry => entryCard(entry, { fullContent: true })).join('') : '<p class="calendar-empty-review">这一天，还留着一页空白。</p>'}</section>`;
   }
   function refreshDailyQuote(force = false) {
     const now = new Date(); const day = localDate(now);
     if (force || day !== state.quoteDay) {
+      const previousDay = state.quoteDay;
+      if (day !== previousDay && state.calendarDay === previousDay) {
+        state.calendarDay = day; state.calendarMonth = day.slice(0, 7);
+      }
       state.quoteDay = day; state.dailyQuote = quoteForDate(now);
       if (byId('daily-quote')) byId('daily-quote').textContent = state.dailyQuote;
       if (byId('home-date')) byId('home-date').textContent = headingDate();
+      if (byId('mood-calendar')) byId('mood-calendar').innerHTML = calendarView();
     }
   }
   function scheduleDailyRefresh() {
@@ -155,6 +200,7 @@
   function restoreDetailScroll() {
     if (state.view === 'review') byId('app-content').scrollTop = state.reviewScroll;
     else if (state.view === 'main' && state.tab === 'stats' && state.detailOrigin === 'gallery') byId('app-content').scrollTop = state.galleryScroll;
+    else if (state.view === 'main' && state.tab === 'settings' && state.reviewOrigin === 'calendar') byId('app-content').scrollTop = state.calendarScroll;
   }
   function galleryPool() {
     return entries().flatMap(entry => {
@@ -205,7 +251,31 @@
   }
   function settingsView() {
     const tool = (symbol, label, action) => `<button type="button" class="icon-button settings-tool" data-action="${action}" aria-label="${label}" title="${label}">${icon(symbol)}</button>`;
-    return `<section class="page settings-page"><div class="settings-tools" aria-label="片刻工具">${tool(state.dark ? 'sun' : 'moon', state.dark ? '切换浅色外观' : '切换深色外观', 'theme')}${tool('lock', '隐私锁', 'pin')}${tool('backup', '备份', 'backup')}</div><div class="glass daily-quote-card"><p id="daily-quote">${escape(state.dailyQuote)}</p></div></section>`;
+    return `<section class="page settings-page"><div class="settings-tools" aria-label="片刻工具">${tool(state.dark ? 'sun' : 'moon', state.dark ? '切换浅色外观' : '切换深色外观', 'theme')}${tool('lock', '隐私锁', 'pin')}${tool('backup', '备份', 'backup')}</div><div class="glass daily-quote-card"><div class="quote-constellation" aria-hidden="true"><span class="quote-moon">${icon('moon')}</span><span class="quote-star quote-star-one">${icon('starlight')}</span><span class="quote-star quote-star-two">${icon('starlight')}</span></div><p id="daily-quote">${escape(state.dailyQuote)}</p></div><div id="mood-calendar">${calendarView()}</div></section>`;
+  }
+  function resetCalendar() {
+    state.calendarDay = localDate(new Date()); state.calendarMonth = state.calendarDay.slice(0, 7); state.calendarScroll = 0;
+  }
+  function calendarView() {
+    const buckets = calendarBuckets(entries()); const today = localDate(new Date());
+    const [year, month] = state.calendarMonth.split('-').map(Number);
+    const selected = buckets.get(state.calendarDay) || []; const moods = calendarMoods(selected);
+    const cells = calendarCells(state.calendarMonth).map(day => {
+      if (!day) return '<span class="calendar-spacer" aria-hidden="true"></span>';
+      const list = buckets.get(day) || []; const mood = calendarMoods(list)[0];
+      const label = `${year}年${month}月${Number(day.slice(-2))}日${day === today ? '，今天' : ''}${list.length ? '，有记录' : ''}${mood ? `，${mood.label}` : ''}`;
+      return `<button type="button" class="calendar-cell${day === today ? ' today' : ''}${day === state.calendarDay ? ' selected' : ''}" data-action="calendar-day" data-day="${day}" aria-pressed="${day === state.calendarDay}" aria-label="${escape(label)}"><span class="calendar-number">${Number(day.slice(-2))}</span><span class="calendar-indicator">${mood ? moodSymbol(mood.symbol, mood.tone) : list.length ? '<i class="calendar-record-dot"></i>' : ''}</span></button>`;
+    }).join('');
+    return `<section class="glass mood-calendar" aria-label="心情月历"><header class="calendar-header"><button type="button" class="icon-button calendar-month-button" data-action="calendar-prev" aria-label="上一个月" ${state.calendarMonth === '1900-01' ? 'disabled' : ''}>${icon('back')}</button><h2>${year}年${month}月</h2><button type="button" class="icon-button calendar-month-button" data-action="calendar-next" aria-label="下一个月" ${state.calendarMonth === '2100-12' ? 'disabled' : ''}>${icon('forward')}</button></header><div class="calendar-weekdays" aria-hidden="true">${['一', '二', '三', '四', '五', '六', '日'].map(day => `<span>${day}</span>`).join('')}</div><div class="calendar-days">${cells}</div><div class="calendar-selection"><p class="calendar-day-label">${shortDate(calendarDate(state.calendarDay))}</p>${moods.length ? `<div class="calendar-moods">${moods.map(moodBadge).join('')}</div>` : `<p class="calendar-note">${selected.length ? '这一天的片刻，已经悄悄留下。' : '这一天，还留着一页空白。'}</p>`}${selected.length ? `<button type="button" class="calendar-review-button" data-action="calendar-review">查看当天记录 ${icon('forward')}</button>` : ''}</div></section>`;
+  }
+  function changeCalendarMonth(delta) {
+    const next = calendarShift(state.calendarMonth, state.calendarDay, delta);
+    state.calendarMonth = next.month; state.calendarDay = next.day; render({ keepScroll: true });
+  }
+  function openCalendarReview() {
+    if (!(calendarBuckets(entries()).get(state.calendarDay) || []).length) return;
+    state.calendarScroll = byId('app-content').scrollTop; state.reviewDate = state.calendarDay;
+    state.reviewOrigin = 'calendar'; state.reviewScroll = 0; state.detailOrigin = 'main'; state.view = 'review'; render();
   }
   function backupSheet() {
     byId('modal-root').innerHTML = `<div class="modal-backdrop backup-backdrop"><section class="backup-sheet" role="dialog" aria-modal="true" aria-label="预览备份"><div class="backup-sheet-header"><h2>预览备份</h2><button type="button" class="icon-button" data-action="close-modal" aria-label="关闭备份操作">${icon('close')}</button></div><button type="button" class="backup-option" data-action="import"><span class="backup-icon">${icon('download')}</span><span><strong>导入预览备份</strong><small>恢复当前浏览器中的试用记录</small></span>${icon('forward')}</button><button type="button" class="backup-option" data-action="export"><span class="backup-icon">${icon('upload')}</span><span><strong>导出预览备份</strong><small>包含文字、心情、标签和照片</small></span>${icon('forward')}</button><p class="backup-note">网页预览备份与手机版备份独立。</p></section></div>`;
@@ -220,7 +290,7 @@
   }
   function editorView() {
     const draft = state.draft;
-    return `${viewHeader(draft.id ? '编辑记录' : '记录此刻')}<section class="page editor-page"><p class="editor-intro">${draft.id ? '把这段记忆补充得更完整' : '生活、梦境和心情，都值得留在星海里'}</p><div class="field-group"><p class="field-label">记录类型</p><div class="editor-types">${Object.entries(TYPES).map(([type, label]) => `<button type="button" class="chip ${type === draft.type ? 'selected' : ''}" data-action="draft-type" data-type="${type}">${label}</button>`).join('')}</div></div><div class="field-group"><p class="field-label">发生时间</p><div class="date-fields"><label class="date-field">${icon('calendar')}<input type="date" value="${draft.date}" data-field="date" aria-label="发生日期" min="1900-01-01" max="2100-12-31"></label><label class="date-field time">${icon('clock')}<input type="time" value="${draft.time}" data-field="time" aria-label="发生时间"></label></div></div><div class="field-group"><label class="field-label" for="entry-text">想记下什么？</label><textarea id="entry-text" class="text-field" data-field="text" maxlength="50000" placeholder="今天发生了什么？\n写下地点、人物和心情……">${escape(draft.text)}</textarea><p class="char-counter" id="char-counter">${draft.text.length} 字</p></div><div class="field-group"><p class="field-label">情绪 <small>可选</small></p><div class="mood-options">${Object.entries(MOODS).map(([key, [symbol, label]]) => `<button type="button" class="mood-chip ${!draft.customActive && draft.mood === key ? 'selected' : ''}" data-action="draft-mood" data-mood="${key}" aria-pressed="${!draft.customActive && draft.mood === key}">${moodSymbol(symbol, key)}<span>${label}</span></button>`).join('')}<button type="button" class="mood-chip ${draft.customActive ? 'selected' : ''}" data-action="draft-custom" aria-pressed="${draft.customActive}">${moodSymbol('heart', 'custom')}<span>自定义</span></button></div>${draft.customActive ? `<div class="custom-mood-box"><label class="field-label" for="custom-mood-field">此刻的心情，只由你定义</label><input id="custom-mood-field" class="text-field" data-field="customMood" maxlength="20" value="${escape(draft.customMood)}" placeholder="例如：松弛、想念、被治愈"><p class="custom-mood-count">最多 20 个字</p></div>` : ''}</div><div class="field-group"><label class="field-label" for="entry-tags">标签 <small>可选</small></label><input id="entry-tags" class="text-field" data-field="tags" value="${escape(draft.tags)}" maxlength="500" placeholder="用逗号或空格分隔，如：旅行，家人"></div><div class="field-group"><p class="field-label">照片 <small>最多 5 张 · ${draft.photos.length}/5</small></p><div class="photo-editor">${draft.photos.map((photo, index) => `<div class="editor-photo"><img src="${escape(photo)}" alt="已选照片 ${index + 1}"><button type="button" data-action="remove-photo" data-index="${index}" aria-label="移除照片 ${index + 1}">${icon('close')}</button></div>`).join('')}${draft.photos.length < 5 ? `<button type="button" class="add-photo-tile" data-action="gallery">${icon('plus')}<span>添加照片</span></button>` : ''}</div><div class="photo-actions"><button type="button" class="secondary-button" data-action="gallery" ${draft.photos.length >= 5 ? 'disabled' : ''}>${icon('photo')} 相册</button><button type="button" class="secondary-button" data-action="camera" ${draft.photos.length >= 5 ? 'disabled' : ''}>${icon('camera')} 拍照</button></div><p class="photo-tip">可以只留一张照片，也可以写下长长的故事。</p></div></section>`;
+    return `${viewHeader(draft.id ? '编辑记录' : '记录此刻')}<section class="page editor-page"><p class="editor-intro">${draft.id ? '把这段记忆补充得更完整' : '生活、梦境和心情，都值得留在星海里'}</p><div class="field-group"><p class="field-label">记录类型</p><div class="editor-types">${Object.entries(TYPES).map(([type, label]) => `<button type="button" class="chip ${type === draft.type ? 'selected' : ''}" data-action="draft-type" data-type="${type}">${label}</button>`).join('')}</div></div><div class="field-group"><p class="field-label">发生时间</p><div class="date-fields"><label class="date-field">${icon('calendar')}<input type="date" value="${draft.date}" data-field="date" aria-label="发生日期" min="1900-01-01" max="2100-12-31"></label><label class="date-field time">${icon('clock')}<input type="time" value="${draft.time}" data-field="time" aria-label="发生时间"></label></div></div><div class="field-group"><label class="field-label" for="entry-text">想记下什么？</label><textarea id="entry-text" class="text-field" data-field="text" maxlength="50000" placeholder="今天发生了什么？\n写下地点、人物和心情……">${escape(draft.text)}</textarea><p class="char-counter" id="char-counter">${draft.text.length} 字</p></div><div class="field-group"><p class="field-label">情绪 <small>可选</small></p><div class="mood-options">${Object.entries(MOODS).map(([key, [symbol, label]]) => `<button type="button" class="mood-chip ${!draft.customActive && draft.mood === key ? 'selected' : ''}" data-action="draft-mood" data-mood="${key}" aria-pressed="${!draft.customActive && draft.mood === key}">${moodSymbol(symbol, key)}<span>${label}</span></button>`).join('')}<button type="button" class="mood-chip ${draft.customActive ? 'selected' : ''}" data-action="draft-custom" aria-pressed="${draft.customActive}">${moodSymbol('heart', 'custom')}<span>自定义</span></button></div>${draft.customActive ? `<div class="custom-mood-box"><label class="field-label" for="custom-mood-field">此刻的心情，只由你定义</label><input id="custom-mood-field" class="text-field" data-field="customMood" maxlength="20" value="${escape(draft.customMood)}" placeholder="例如：松弛、想念、被治愈"><p class="custom-mood-count">最多 20 个字</p></div>` : ''}</div><div class="field-group"><label class="field-label" for="entry-tags">标签 <small>可选</small></label><input id="entry-tags" class="text-field" data-field="tags" value="${escape(draft.tags)}" maxlength="500" placeholder="用逗号或空格分隔，如：旅行，家人"></div><div class="field-group"><p class="field-label">照片 <small>最多 ${MAX_PHOTOS} 张 · ${draft.photos.length}/${MAX_PHOTOS}</small></p><div class="photo-editor">${draft.photos.map((photo, index) => `<div class="editor-photo"><img src="${escape(photo)}" alt="已选照片 ${index + 1}"><button type="button" data-action="remove-photo" data-index="${index}" aria-label="移除照片 ${index + 1}" ${state.photoLoading ? 'disabled' : ''}>${icon('close')}</button></div>`).join('')}${draft.photos.length < MAX_PHOTOS ? `<button type="button" class="add-photo-tile" data-action="gallery" ${state.photoLoading ? 'disabled' : ''}>${icon('plus')}<span>添加照片</span></button>` : ''}</div><div class="photo-actions"><button type="button" class="secondary-button" data-action="gallery" ${state.photoLoading || draft.photos.length >= MAX_PHOTOS ? 'disabled' : ''}>${icon('photo')} 相册</button><button type="button" class="secondary-button" data-action="camera" ${state.photoLoading || draft.photos.length >= MAX_PHOTOS ? 'disabled' : ''}>${icon('camera')} 拍照</button></div><p class="photo-tip">可以只留一张照片，也可以写下长长的故事。</p></div></section>`;
   }
   function detailView() {
     const entry = findEntry(state.detailId); if (!entry) { state.view = 'main'; return homeView(); }
@@ -229,6 +299,9 @@
   }
   function saveDraft() {
     const draft = state.draft;
+    if (!draft) return;
+    if (state.photoLoading) return toast('照片还在读取，请稍等片刻再保存。');
+    if (draft.photos.length > MAX_PHOTOS) return toast(`每条记录最多添加 ${MAX_PHOTOS} 张照片。`);
     if (!draft.text.trim() && !draft.photos.length) return toast('写一点文字，或添加一张照片，再收藏这份记忆。');
     if (draft.customActive && !draft.customMood.trim()) { toast('写下你的自定义心情，或选择一种已有心情。'); byId('custom-mood-field')?.focus(); return; }
     if (draft.customActive && draft.customMood.trim().length > 20) return toast('自定义心情最多 20 个字。');
@@ -236,26 +309,31 @@
     const now = new Date().toISOString(); const id = draft.id || (globalThis.crypto?.randomUUID?.() || `preview-${Date.now()}-${Math.random().toString(16).slice(2)}`);
     const entry = { id, text: draft.text.trim(), type: draft.type, mood: draft.customActive ? '' : draft.mood, customMood: draft.customActive ? draft.customMood.trim() : '', tags: [...new Set(draft.tags.split(/[,，、\s]+/).map(tag => tag.replace(/^#/, '').trim()).filter(Boolean))].slice(0, 20), occurredAt: date.toISOString(), photos: [...draft.photos], createdAt: now, updatedAt: now };
     if (draft.id && draft.source === 'demo') { state.demo = state.demo.map(item => item.id === id ? entry : item); state.dataVersion++; toast('示例记录已更新，仅用于本次预览。'); }
-    else { const next = personal.filter(item => item.id !== id); next.push(entry); if (!persist(next)) return; if (state.mode !== 'personal') resetGallery(); state.mode = 'personal'; toast('已收藏这份记忆。'); }
+    else { const next = personal.filter(item => item.id !== id); next.push(entry); if (!persist(next)) return; if (state.mode !== 'personal') { resetGallery(); resetCalendar(); resetReview(); } state.mode = 'personal'; toast('已收藏这份记忆。'); }
     state.detailId = id; state.photoIndex = 0; state.view = 'detail'; state.draft = null; render();
   }
   function closeModal() { byId('modal-root').innerHTML = ''; }
   function modal(title, text, actions, extra = '') { byId('modal-root').innerHTML = `<div class="modal-backdrop"><section class="modal" role="dialog" aria-modal="true" aria-label="${escape(title)}"><h2>${escape(title)}</h2><p>${escape(text)}</p>${extra}<div class="modal-actions">${actions}</div></section></div>`; byId('modal-root').querySelector('input,button')?.focus(); }
   function photoViewer() { const entry = findEntry(state.detailId); byId('modal-root').innerHTML = `<div class="photo-viewer" role="dialog" aria-label="照片查看">${viewHeader(`${state.photoIndex + 1} / ${entry.photos.length}`, 'close-modal')}<img src="${escape(entry.photos[state.photoIndex])}" alt="放大的记录照片"><div class="viewer-nav"><button data-action="viewer-previous" ${state.photoIndex === 0 ? 'disabled' : ''}>${icon('back')} 上一张</button><button data-action="viewer-next" ${state.photoIndex >= entry.photos.length - 1 ? 'disabled' : ''}>下一张 ${icon('forward')}</button></div></div>`; }
   async function addPhotos(files) {
-    if (!state.draft) return;
-    const draft = state.draft; const selected = [...files].filter(file => file.type.startsWith('image/')).slice(0, 5 - draft.photos.length);
+    if (!state.draft || state.photoLoading) return;
+    const draft = state.draft; const validFiles = [...files].filter(file => file.type.startsWith('image/'));
+    if (draft.photos.length >= MAX_PHOTOS) return toast(`每条记录最多添加 ${MAX_PHOTOS} 张照片。`);
+    const selected = validFiles.slice(0, MAX_PHOTOS - draft.photos.length);
     if (!selected.length) return toast('请选择照片文件。');
-    if (files.length > selected.length) toast('每条记录最多添加 5 张照片。');
+    if (validFiles.length > selected.length) toast(`每条记录最多添加 ${MAX_PHOTOS} 张照片。`);
+    state.photoLoading = true; render({ keepScroll: true });
     try {
       for (const file of selected) {
+        if (state.draft !== draft) break;
         if (file.size > 25 * 1024 * 1024) throw new Error('照片较大，请选择小于 25 MB 的图片。');
         const url = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file); });
+        if (state.draft !== draft) break;
         const compressed = await new Promise((resolve, reject) => { const image = new Image(); image.onload = () => { const scale = Math.min(1, 1280 / Math.max(image.width, image.height)); const canvas = document.createElement('canvas'); canvas.width = Math.round(image.width * scale); canvas.height = Math.round(image.height * scale); canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height); resolve(canvas.toDataURL('image/jpeg', .82)); }; image.onerror = () => reject(new Error('这张照片无法读取，请换一种图片格式。')); image.src = url; });
-        if (state.draft === draft) draft.photos.push(compressed);
+        if (state.draft === draft && draft.photos.length < MAX_PHOTOS) draft.photos.push(compressed);
       }
-      if (state.draft === draft) render({ keepScroll: true });
     } catch (error) { toast(error.message || '照片读取失败，请重新选择。'); }
+    finally { state.photoLoading = false; if (state.view === 'editor') render({ keepScroll: true }); }
   }
   function exportBackup() {
     const blob = new Blob([JSON.stringify({ format: BACKUP_FORMAT, exportedAt: new Date().toISOString(), entries: personal }, null, 2)], { type: 'application/json' });
@@ -269,20 +347,24 @@
       if (data.format !== BACKUP_FORMAT || !Array.isArray(data.entries) || data.entries.length > 1000) throw new Error('请选择星海日记导出的网页预览备份，手机版备份请在手机上导入。');
       const ids = new Set(personal.map(entry => entry.id)); const next = [...personal]; let count = 0;
       for (const raw of data.entries) {
-        if (typeof raw.id !== 'string' || !raw.id || typeof raw.text !== 'string' || raw.text.length > 50000 || !TYPES[raw.type] || Number.isNaN(new Date(raw.occurredAt).getTime()) || !Array.isArray(raw.tags) || raw.tags.length > 20 || !raw.tags.every(tag => typeof tag === 'string') || !Array.isArray(raw.photos) || raw.photos.length > 5 || !raw.photos.every(photo => typeof photo === 'string' && /^data:image\/(jpeg|png|webp);base64,/.test(photo))) throw new Error('备份中的记录或照片格式不正确。');
+        if (typeof raw.id !== 'string' || !raw.id || typeof raw.text !== 'string' || raw.text.length > 50000 || !TYPES[raw.type] || Number.isNaN(new Date(raw.occurredAt).getTime()) || !Array.isArray(raw.tags) || raw.tags.length > 20 || !raw.tags.every(tag => typeof tag === 'string') || !Array.isArray(raw.photos) || raw.photos.length > MAX_PHOTOS || !raw.photos.every(photo => typeof photo === 'string' && /^data:image\/(jpeg|png|webp);base64,/.test(photo))) throw new Error('备份中的记录或照片格式不正确。');
         if (raw.customMood !== undefined && (typeof raw.customMood !== 'string' || raw.customMood.trim().length > 20)) throw new Error('备份中的自定义心情格式不正确，最多 20 个字。');
         if (!ids.has(raw.id)) { next.push({ id: raw.id, text: raw.text, type: raw.type, mood: customMood(raw) ? '' : MOODS[raw.mood] ? raw.mood : '', customMood: customMood(raw), occurredAt: raw.occurredAt, tags: raw.tags, photos: raw.photos }); ids.add(raw.id); count++; }
       }
-      if (persist(next)) { state.mode = 'personal'; state.tab = 'home'; resetReview(); resetGallery(); render(); toast(`已导入 ${count} 条试用记录，相同编号已跳过。`); }
+      if (persist(next)) { state.mode = 'personal'; state.tab = 'home'; resetReview(); resetGallery(); resetCalendar(); render(); toast(`已导入 ${count} 条试用记录，相同编号已跳过。`); }
     } catch (error) { toast(error.message || '文件读取失败，请重新选择。'); }
   }
   document.addEventListener('click', event => {
     const button = event.target.closest('[data-action]'); if (!button || button.disabled) return;
     const action = button.dataset.action;
     switch (action) {
-      case 'tab': if (button.dataset.tab === 'stats' && state.tab !== 'stats') shuffleGallery(); state.tab = button.dataset.tab; state.view = 'main'; state.detailOrigin = 'main'; render(); break;
+      case 'tab': if (button.dataset.tab === 'stats' && state.tab !== 'stats') shuffleGallery(); state.tab = button.dataset.tab; state.view = 'main'; state.detailOrigin = 'main'; state.reviewOrigin = 'random'; render(); break;
       case 'compose': beginEditor(); break;
       case 'review': openRandomReview(); break;
+      case 'calendar-prev': changeCalendarMonth(-1); break;
+      case 'calendar-next': changeCalendarMonth(1); break;
+      case 'calendar-day': state.calendarDay = button.dataset.day; render({ keepScroll: true }); break;
+      case 'calendar-review': openCalendarReview(); break;
       case 'shuffle-gallery': shuffleGallery(); render(); break;
       case 'gallery-detail': state.detailOrigin = 'gallery'; state.galleryScroll = byId('app-content').scrollTop; state.detailId = button.dataset.id; state.photoIndex = Number(button.dataset.index); state.view = 'detail'; render(); break;
       case 'filter': state.filter = button.dataset.type; render({ keepScroll: true }); break;
@@ -317,8 +399,8 @@
     if (event.target.id === 'search-field') { state.search = event.target.value; byId('record-results').innerHTML = recordResults(); const clear = document.querySelector('[data-action="clear-search"]'); clear.innerHTML = state.search ? icon('close') : ''; }
     if (event.target.dataset.field && state.draft) { state.draft[event.target.dataset.field] = event.target.value; if (event.target.dataset.field === 'text') byId('char-counter').textContent = `${event.target.value.length} 字`; }
   });
-  document.querySelectorAll('[data-mode]').forEach(button => button.addEventListener('click', () => { state.mode = button.dataset.mode; state.view = 'main'; state.tab = 'home'; state.filter = ''; state.search = ''; state.draft = null; resetReview(); resetGallery(); closeModal(); render(); }));
-  byId('show-empty').addEventListener('click', () => { state.mode = 'empty'; state.view = 'main'; state.tab = 'home'; state.filter = ''; state.search = ''; state.draft = null; resetReview(); resetGallery(); closeModal(); render(); });
+  document.querySelectorAll('[data-mode]').forEach(button => button.addEventListener('click', () => { state.mode = button.dataset.mode; state.view = 'main'; state.tab = 'home'; state.filter = ''; state.search = ''; state.draft = null; resetReview(); resetGallery(); resetCalendar(); closeModal(); render(); }));
+  byId('show-empty').addEventListener('click', () => { state.mode = 'empty'; state.view = 'main'; state.tab = 'home'; state.filter = ''; state.search = ''; state.draft = null; resetReview(); resetGallery(); resetCalendar(); closeModal(); render(); });
   byId('device-width').addEventListener('input', event => { document.documentElement.style.setProperty('--phone-width', `${event.target.value}px`); byId('width-value').textContent = `${event.target.value} px`; });
   byId('gallery-input').addEventListener('change', event => { addPhotos(event.target.files); event.target.value = ''; });
   byId('camera-input').addEventListener('change', event => { addPhotos(event.target.files); event.target.value = ''; });

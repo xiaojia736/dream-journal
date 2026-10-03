@@ -3,6 +3,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import 'entry_detail_screen.dart';
+import 'entry_editor_screen.dart';
 import 'home_screen.dart';
 import 'settings_screen.dart';
 import 'stats_screen.dart';
@@ -16,22 +18,103 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   int _index = 0;
+  bool _editorOpen = false;
+
+  Future<void> _openEditor() async {
+    if (_editorOpen) return;
+    _editorOpen = true;
+    FocusManager.instance.primaryFocus?.unfocus();
+    try {
+      final id = await Navigator.of(context).push<String>(
+        MaterialPageRoute(builder: (_) => const EntryEditorScreen()),
+      );
+      if (!mounted || id == null) return;
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute(builder: (_) => EntryDetailScreen(entryId: id)),
+      );
+    } finally {
+      _editorOpen = false;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       extendBody: true,
+      resizeToAvoidBottomInset: true,
+      // The shell positions this above its navigation and system insets.
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: _index == 0 ? _WriteFab(onTap: _openEditor) : null,
       body: IndexedStack(
         index: _index,
         children: [
-          const HomeScreen(),
+          HomeScreen(onCreate: _openEditor),
           StatsScreen(active: _index == 1),
           SettingsScreen(active: _index == 2),
         ],
       ),
       bottomNavigationBar: _StarlightNavigation(
         selectedIndex: _index,
-        onSelected: (value) => setState(() => _index = value),
+        onSelected: (value) {
+          FocusManager.instance.primaryFocus?.unfocus();
+          setState(() => _index = value);
+        },
+      ),
+    );
+  }
+}
+
+class _WriteFab extends StatelessWidget {
+  const _WriteFab({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final glow = AppColors.writeViolet;
+    return Tooltip(
+      message: '记录此刻',
+      excludeFromSemantics: true,
+      child: Semantics(
+        button: true,
+        label: '记录此刻',
+        child: Container(
+          width: 58,
+          height: 58,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: glow.withValues(alpha: dark ? .26 : .20),
+                blurRadius: 22,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            shape: const CircleBorder(),
+            clipBehavior: Clip.antiAlias,
+            child: Ink(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: AppColors.writeGradient,
+              ),
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                splashColor: (dark ? AppColors.darkAccent : Colors.white)
+                    .withValues(alpha: .38),
+                onTap: onTap,
+                child: Icon(
+                  dark ? Icons.auto_awesome : Icons.edit_rounded,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -61,14 +144,14 @@ class _StarlightNavigation extends StatelessWidget {
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: dark
-                ? AppColors.darkCard
-                : Colors.white.withValues(alpha: .94),
+                ? const Color(0xff322e51).withValues(alpha: .70)
+                : const Color(0xfff5f0fc).withValues(alpha: .76),
             border: Border(
               top: BorderSide(color: AppColors.border(context)),
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: dark ? .22 : .06),
+                color: Colors.black.withValues(alpha: dark ? .08 : .05),
                 blurRadius: 24,
                 offset: const Offset(0, -6),
               ),

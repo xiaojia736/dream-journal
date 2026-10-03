@@ -8,6 +8,7 @@ import '../state/app_state_scope.dart';
 import '../theme/app_theme.dart';
 import '../utils/daily_quote.dart';
 import '../widgets/gradient_background.dart';
+import '../widgets/mood_record_calendar.dart';
 import 'pin_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -219,26 +220,120 @@ class _SettingsScreenState extends State<SettingsScreen>
                 ],
               ),
             ),
+            const SizedBox(height: 16),
+            _DreamReflectionCard(text: dailyQuote(_quoteDate)),
+            const SizedBox(height: 18),
+            MoodRecordCalendar(today: _quoteDate),
             const SizedBox(height: 20),
-            ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 260),
-              child: GlassCard(
-                padding: const EdgeInsets.all(28),
-                child: Text(
-                  dailyQuote(_quoteDate),
-                  textAlign: TextAlign.start,
-                  style: TextStyle(
-                    color: AppColors.body(context),
-                    fontSize: 18,
-                    fontWeight: FontWeight.w400,
-                    height: 1.95,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DreamReflectionCard extends StatelessWidget {
+  const _DreamReflectionCard({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return GlassCard(
+      radius: 30,
+      padding: EdgeInsets.zero,
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: dark
+            ? const [
+                Color.fromRGBO(233, 230, 255, .13),
+                Color.fromRGBO(233, 230, 255, .065),
+              ]
+            : const [
+                Color.fromRGBO(255, 255, 255, .70),
+                Color.fromRGBO(250, 245, 255, .40),
+              ],
+      ),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: const Alignment(-1, -1),
+                    radius: 1.25,
+                    colors: [
+                      const Color(0xffb2eee9).withValues(
+                        alpha: dark ? .12 : .26,
+                      ),
+                      const Color(0x00b2eee9),
+                    ],
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 20),
-          ],
-        ),
+          ),
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: const Alignment(1, 1),
+                    radius: 1.15,
+                    colors: [
+                      const Color(0xfff0b8de).withValues(
+                        alpha: dark ? .12 : .20,
+                      ),
+                      const Color(0x00f0b8de),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(22),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ExcludeSemantics(
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.dark_mode_outlined,
+                        size: 16,
+                        color: dark
+                            ? const Color(0xffe1d3fc)
+                            : const Color(0xff9f88c4),
+                      ),
+                      const Spacer(),
+                      Icon(
+                        Icons.auto_awesome_outlined,
+                        size: 12,
+                        color: AppColors.muted(context).withValues(alpha: .6),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  text,
+                  textAlign: TextAlign.start,
+                  style: TextStyle(
+                    color: AppColors.body(context),
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w400,
+                    height: 1.85,
+                    letterSpacing: .2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

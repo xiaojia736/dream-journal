@@ -21,69 +21,83 @@ class GradientBackground extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                stops: dark ? const [0, .5, 1] : null,
+                stops: const [0, .5, 1],
                 colors: dark
                     ? const [
                         AppColors.darkBackground,
                         AppColors.darkCanvasMiddle,
                         AppColors.darkCanvasBottom,
                       ]
-                    : const [Color(0xfffaf7f2), Color(0xfff5efeb)],
+                    : const [
+                        AppColors.lightBackground,
+                        AppColors.lightCanvasMiddle,
+                        AppColors.lightCanvasBottom,
+                      ],
               ),
             ),
           ),
-          if (dark) ...[
-            Positioned(
-              left: -constraints.maxWidth * .1,
-              top: constraints.maxHeight * .05,
-              child: IgnorePointer(
-                child: ImageFiltered(
-                  imageFilter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
-                  child: Container(
-                    width: 260,
-                    height: 260,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.auroraCyan,
-                    ),
+          RepaintBoundary(
+            child: Stack(
+              children: [
+                Positioned(
+                  left: -70,
+                  top: -20,
+                  child: _SoftGlow(
+                    size: 320,
+                    color: dark
+                        ? AppColors.auroraCyan
+                        : const Color.fromRGBO(178, 238, 233, .48),
                   ),
                 ),
-              ),
-            ),
-            Positioned(
-              right: -constraints.maxWidth * .15,
-              bottom: constraints.maxHeight * .15,
-              child: IgnorePointer(
-                child: ImageFiltered(
-                  imageFilter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
-                  child: Container(
-                    width: 320,
-                    height: 320,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.dreamyViolet,
-                    ),
+                Positioned(
+                  right: -100,
+                  top: constraints.maxHeight * .30,
+                  child: _SoftGlow(
+                    size: 360,
+                    color: dark
+                        ? AppColors.dreamyViolet
+                        : const Color.fromRGBO(240, 184, 222, .38),
                   ),
                 ),
-              ),
-            ),
-          ] else
-            const Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    center: Alignment(.76, -.9),
-                    radius: .95,
-                    colors: [Color(0x52ffd9bd), Color(0x00faf7f2)],
+                Positioned(
+                  left: -35,
+                  bottom: -90,
+                  child: _SoftGlow(
+                    size: 300,
+                    color: dark
+                        ? AppColors.dreamyLilac
+                        : const Color.fromRGBO(191, 167, 245, .24),
                   ),
                 ),
-              ),
+              ],
             ),
+          ),
           child,
         ],
       ),
     );
   }
+}
+
+// These fixed colour clouds are isolated from scrolling UI and never animate.
+// A single blur on a solid tint keeps the glow visible without double blurring.
+class _SoftGlow extends StatelessWidget {
+  const _SoftGlow({required this.size, required this.color});
+
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+    child: ImageFiltered(
+      imageFilter: ImageFilter.blur(sigmaX: 48, sigmaY: 48),
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+      ),
+    ),
+  );
 }
 
 class GlassCard extends StatelessWidget {
@@ -93,8 +107,9 @@ class GlassCard extends StatelessWidget {
     this.padding = const EdgeInsets.all(18),
     this.margin,
     this.onTap,
-    this.radius = 18,
+    this.radius = 22,
     this.tint,
+    this.gradient,
     this.diary = false,
   });
 
@@ -104,6 +119,7 @@ class GlassCard extends StatelessWidget {
   final VoidCallback? onTap;
   final double radius;
   final Color? tint;
+  final Gradient? gradient;
   final bool diary;
 
   @override
@@ -115,18 +131,12 @@ class GlassCard extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: borderRadius,
         boxShadow: [
-          if (dark)
-            BoxShadow(
-              color: (tint ?? AppColors.writeViolet).withValues(alpha: .04),
-              blurRadius: 24,
-              spreadRadius: -5,
-            ),
           BoxShadow(
-            color: (dark ? Colors.black : const Color(0xffb49682)).withValues(
-              alpha: dark ? (diary ? .25 : .12) : .08,
-            ),
-            blurRadius: dark && diary ? 36 : 24,
-            offset: Offset(0, dark && diary ? 16 : 10),
+            color: const Color(0xff251b4e)
+                .withValues(alpha: dark ? .12 : .06),
+            blurRadius: 28,
+            spreadRadius: -5,
+            offset: const Offset(0, 12),
           ),
         ],
       ),
@@ -139,27 +149,28 @@ class GlassCard extends StatelessWidget {
             child: Ink(
               decoration: BoxDecoration(
                 borderRadius: borderRadius,
-                color: dark
-                    ? diary
-                          ? AppColors.darkDiaryCard
-                          : AppColors.darkCard
-                    : null,
-                gradient: dark
-                    ? null
-                    : LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Colors.white.withValues(alpha: .9),
-                          const Color(0xfffffbf7).withValues(alpha: .84),
-                        ],
-                      ),
+                gradient: gradient ??
+                    LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: dark
+                          ? [
+                              (tint ?? const Color(0xffe9e6ff))
+                                  .withValues(alpha: diary ? .14 : .16),
+                              const Color(0xffe9e6ff)
+                                  .withValues(alpha: diary ? .07 : .09),
+                            ]
+                          : [
+                              Colors.white.withValues(alpha: .76),
+                              const Color(0xfff9f5ff).withValues(alpha: .52),
+                            ],
+                    ),
                 border: Border.all(
                   color: dark
                       ? diary
                             ? AppColors.darkDiaryBorder
                             : AppColors.darkBorder
-                      : const Color(0xfffffdf9),
+                      : Colors.white.withValues(alpha: .78),
                 ),
               ),
               child: InkWell(
@@ -233,13 +244,7 @@ class PrimaryAction extends StatelessWidget {
         height: 54,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          gradient: dark
-              ? AppColors.writeGradient
-              : const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xffe07a5f), Color(0xffe9a66e)],
-                ),
+          gradient: AppColors.writeGradient,
           boxShadow: [
             BoxShadow(
               color: (dark ? AppColors.writeViolet : AppColors.lightPrimary)

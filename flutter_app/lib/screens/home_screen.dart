@@ -8,11 +8,12 @@ import '../utils/past_day_picker.dart';
 import '../widgets/gradient_background.dart';
 import '../widgets/journal_record_card.dart';
 import 'entry_detail_screen.dart';
-import 'entry_editor_screen.dart';
 import 'recall_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, required this.onCreate});
+
+  final VoidCallback onCreate;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -42,16 +43,6 @@ class _HomeScreenState extends State<HomeScreen>
     _starController.dispose();
     _search.dispose();
     super.dispose();
-  }
-
-  Future<void> _openEditor([JournalEntry? entry]) async {
-    final id = await Navigator.of(context).push<String>(
-      MaterialPageRoute(builder: (_) => EntryEditorScreen(entryId: entry?.id)),
-    );
-    if (!mounted || id == null) return;
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute(builder: (_) => EntryDetailScreen(entryId: id)),
-    );
   }
 
   Future<void> _openRecall() async {
@@ -96,205 +87,199 @@ class _HomeScreenState extends State<HomeScreen>
     return GradientBackground(
       child: SafeArea(
         bottom: false,
-        child: Scaffold(
-          backgroundColor: Colors.transparent,
-          floatingActionButton: state.entries.isEmpty
-              ? null
-              : _WriteFab(onTap: _openEditor),
-          body: RefreshIndicator(
-            onRefresh: state.refresh,
-            child: CustomScrollView(
-              slivers: [
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                  sliver: SliverToBoxAdapter(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          homeDate(DateTime.now()),
-                          style: TextStyle(
-                            color: AppColors.muted(context),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1.2,
+        child: RefreshIndicator(
+          onRefresh: state.refresh,
+          child: CustomScrollView(
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                sliver: SliverToBoxAdapter(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        homeDate(DateTime.now()),
+                        style: TextStyle(
+                          color: AppColors.muted(context),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 11),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '星海日记',
+                            style: Theme.of(context).textTheme.headlineMedium
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: -.5,
+                                ),
+                          ),
+                          ScaleTransition(
+                            scale: _starController,
+                            child: Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: AppColors.soft(
+                                  context,
+                                ).withValues(alpha: .72),
+                                border: Border.all(
+                                  color: Theme.of(context).colorScheme.primary
+                                      .withValues(alpha: .28),
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .primary
+                                        .withValues(alpha: .36),
+                                    blurRadius: 12,
+                                  ),
+                                ],
+                              ),
+                              child: IconButton(
+                                tooltip: '随机回顾一天',
+                                onPressed: _openRecall,
+                                padding: EdgeInsets.zero,
+                                icon: ShaderMask(
+                                  shaderCallback: (bounds) =>
+                                      AppColors.writeGradient.createShader(
+                                        bounds,
+                                      ),
+                                  child: const Icon(
+                                    Icons.auto_awesome,
+                                    size: 19,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      _HomeSubtitle(
+                        dark: Theme.of(context).brightness == Brightness.dark,
+                      ),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        height: 44,
+                        child: TextField(
+                          controller: _search,
+                          onChanged: (_) => setState(() {}),
+                          decoration: InputDecoration(
+                            hintText: '搜索文字、标签或日期',
+                            fillColor:
+                                Theme.of(context).brightness == Brightness.dark
+                                ? AppColors.darkCard
+                                : null,
+                            hintStyle: const TextStyle(fontSize: 13),
+                            prefixIcon: const Icon(Icons.search, size: 19),
+                            suffixIcon: query.isEmpty
+                                ? null
+                                : IconButton(
+                                    onPressed: () {
+                                      _search.clear();
+                                      setState(() {});
+                                    },
+                                    icon: const Icon(Icons.close, size: 18),
+                                  ),
                           ),
                         ),
-                        const SizedBox(height: 7),
+                      ),
+                      const SizedBox(height: 14),
+                      SizedBox(
+                        height: 35,
+                        child: ShaderMask(
+                          blendMode: BlendMode.dstIn,
+                          shaderCallback: (bounds) => const LinearGradient(
+                            stops: [0, .91, 1],
+                            colors: [
+                              Colors.white,
+                              Colors.white,
+                              Colors.transparent,
+                            ],
+                          ).createShader(bounds),
+                          child: ListView(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.only(right: 30),
+                            children: [
+                              _FilterChip(
+                                label: '全部',
+                                selected: _filter == null,
+                                onTap: () => setState(() => _filter = null),
+                              ),
+                              for (final type in EntryType.values)
+                                _FilterChip(
+                                  label: type.label,
+                                  selected: _filter == type,
+                                  onTap: () => setState(() => _filter = type),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 19),
+                      if (entries.isNotEmpty)
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              '星海日记',
-                              style: Theme.of(context).textTheme.headlineMedium
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: -.5,
-                                  ),
+                              _filter?.label ?? '我的记录',
+                              style: TextStyle(
+                                color: AppColors.heading(context),
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                            ScaleTransition(
-                              scale: _starController,
-                              child: Container(
-                                width: 44,
-                                height: 44,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: AppColors.soft(
-                                    context,
-                                  ).withValues(alpha: .72),
-                                  border: Border.all(
-                                    color: Theme.of(context).colorScheme.primary
-                                        .withValues(alpha: .28),
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .primary
-                                          .withValues(alpha: .36),
-                                      blurRadius: 12,
-                                    ),
-                                  ],
-                                ),
-                                child: IconButton(
-                                  tooltip: '随机回顾一天',
-                                  onPressed: _openRecall,
-                                  padding: EdgeInsets.zero,
-                                  icon: ShaderMask(
-                                    shaderCallback: (bounds) =>
-                                        AppColors.writeGradient.createShader(
-                                          bounds,
-                                        ),
-                                    child: const Icon(
-                                      Icons.auto_awesome,
-                                      size: 19,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
+                            Text(
+                              '${entries.length} 条记录',
+                              style: TextStyle(
+                                color: AppColors.muted(context),
+                                fontSize: 12,
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 4),
-                        _HomeSubtitle(
-                          dark: Theme.of(context).brightness == Brightness.dark,
-                        ),
-                        const SizedBox(height: 16),
-                        SizedBox(
-                          height: 44,
-                          child: TextField(
-                            controller: _search,
-                            onChanged: (_) => setState(() {}),
-                            decoration: InputDecoration(
-                              hintText: '搜索文字、标签或日期',
-                              fillColor:
-                                  Theme.of(context).brightness == Brightness.dark
-                                  ? const Color.fromRGBO(255, 255, 255, .05)
-                                  : null,
-                              hintStyle: const TextStyle(fontSize: 13),
-                              prefixIcon: const Icon(Icons.search, size: 19),
-                              suffixIcon: query.isEmpty
-                                  ? null
-                                  : IconButton(
-                                      onPressed: () {
-                                        _search.clear();
-                                        setState(() {});
-                                      },
-                                      icon: const Icon(Icons.close, size: 18),
-                                    ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        SizedBox(
-                          height: 35,
-                          child: ShaderMask(
-                            blendMode: BlendMode.dstIn,
-                            shaderCallback: (bounds) => const LinearGradient(
-                              stops: [0, .91, 1],
-                              colors: [
-                                Colors.white,
-                                Colors.white,
-                                Colors.transparent,
-                              ],
-                            ).createShader(bounds),
-                            child: ListView(
-                              scrollDirection: Axis.horizontal,
-                              padding: const EdgeInsets.only(right: 30),
-                              children: [
-                                _FilterChip(
-                                  label: '全部',
-                                  selected: _filter == null,
-                                  onTap: () => setState(() => _filter = null),
-                                ),
-                                for (final type in EntryType.values)
-                                  _FilterChip(
-                                    label: type.label,
-                                    selected: _filter == type,
-                                    onTap: () => setState(() => _filter = type),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 15),
-                        if (entries.isNotEmpty)
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                _filter?.label ?? '我的记录',
-                                style: TextStyle(
-                                  color: AppColors.heading(context),
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              Text(
-                                '${entries.length} 条记录',
-                                style: TextStyle(
-                                  color: AppColors.muted(context),
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        const SizedBox(height: 12),
-                      ],
-                    ),
+                      const SizedBox(height: 16),
+                    ],
                   ),
                 ),
-                if (entries.isEmpty)
-                  SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: _EmptyState(
-                      hasAnyEntry: state.entries.isNotEmpty,
-                      onCreate: _openEditor,
-                      onReset: () {
-                        _search.clear();
-                        setState(() => _filter = null);
-                      },
-                    ),
-                  )
-                else
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 150),
-                    sliver: SliverList.builder(
-                      itemCount: entries.length,
-                      itemBuilder: (context, index) => JournalRecordCard(
-                        entry: entries[index],
-                        onTap: () => Navigator.of(context).push<void>(
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                EntryDetailScreen(entryId: entries[index].id),
-                          ),
+              ),
+              if (entries.isEmpty)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: _EmptyState(
+                    hasAnyEntry: state.entries.isNotEmpty,
+                    onCreate: widget.onCreate,
+                    onReset: () {
+                      _search.clear();
+                      setState(() => _filter = null);
+                    },
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 160),
+                  sliver: SliverList.builder(
+                    itemCount: entries.length,
+                    itemBuilder: (context, index) => JournalRecordCard(
+                      entry: entries[index],
+                      onTap: () => Navigator.of(context).push<void>(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              EntryDetailScreen(entryId: entries[index].id),
                         ),
                       ),
                     ),
                   ),
-              ],
-            ),
+                ),
+            ],
           ),
         ),
       ),
@@ -334,60 +319,6 @@ class _FilterChip extends StatelessWidget {
         visualDensity: VisualDensity.compact,
         side: dark ? BorderSide.none : BorderSide(color: AppColors.lightBorder),
         onSelected: (_) => onTap(),
-      ),
-    );
-  }
-}
-
-class _WriteFab extends StatelessWidget {
-  const _WriteFab({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final glow = dark ? AppColors.darkPrimary : AppColors.lightPrimary;
-    return Container(
-      width: 58,
-      height: 58,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: glow.withValues(alpha: dark ? .4 : .3),
-            blurRadius: 22,
-            spreadRadius: dark ? 2 : 1,
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        shape: const CircleBorder(),
-        clipBehavior: Clip.antiAlias,
-        child: Ink(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: dark
-                  ? const [AppColors.writeViolet, AppColors.writeBlue]
-                  : const [Color(0xffe78b70), Color(0xffe9c46a)],
-            ),
-          ),
-          child: InkWell(
-            customBorder: const CircleBorder(),
-            splashColor: (dark ? AppColors.darkAccent : Colors.white)
-                .withValues(alpha: .38),
-            onTap: onTap,
-            child: Icon(
-              dark ? Icons.auto_awesome : Icons.edit_rounded,
-              color: Colors.white,
-              size: 24,
-            ),
-          ),
-        ),
       ),
     );
   }

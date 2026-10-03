@@ -9,6 +9,7 @@ import '../models/journal_entry.dart';
 import '../state/app_state_scope.dart';
 import '../theme/app_theme.dart';
 import '../utils/date_text.dart';
+import '../utils/journal_limits.dart';
 import '../widgets/gradient_background.dart';
 import '../widgets/mood_glyph.dart';
 
@@ -34,6 +35,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
   final Set<String> _removedPhotoIds = {};
   bool _initialized = false;
   bool _busy = false;
+  bool _pickingPhotos = false;
 
   JournalEntry? _entry(BuildContext context) => widget.entryId == null
       ? null
@@ -65,27 +67,40 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     super.dispose();
   }
 
+  int get _photoCount =>
+      (_entry(context)?.photos
+              .where((photo) => !_removedPhotoIds.contains(photo.id))
+              .length ??
+          0) +
+      _newPhotos.length;
+
   Future<void> _pickPhotos(ImageSource source) async {
-    final existingCount =
-        (_entry(context)?.photos.length ?? 0) - _removedPhotoIds.length;
-    final remaining = 5 - existingCount - _newPhotos.length;
+    if (_busy || _pickingPhotos) return;
+    final remaining = remainingEntryPhotoSlots(_photoCount);
     if (remaining <= 0) {
-      _message('照片已满', '每条记录最多可以添加 5 张照片。');
+      _message('照片已满', '每条记录最多可以添加 $maxEntryPhotos 张照片。');
       return;
     }
+    setState(() => _pickingPhotos = true);
     try {
+      final List<XFile> selected;
       if (source == ImageSource.camera) {
         final photo = await _picker.pickImage(source: source, imageQuality: 72);
-        if (photo != null) setState(() => _newPhotos.add(photo));
+        selected = [if (photo != null) photo];
       } else {
-        final photos = await _picker.pickMultiImage(
+        selected = await _picker.pickMultiImage(
           imageQuality: 72,
           limit: remaining,
         );
-        setState(() => _newPhotos.addAll(photos.take(remaining)));
       }
+      if (!mounted) return;
+      // Some platforms ignore the picker limit; recheck the live draft on return.
+      final available = remainingEntryPhotoSlots(_photoCount);
+      setState(() => _newPhotos.addAll(selected.take(available)));
     } catch (error) {
       if (mounted) showError(context, error, title: '无法获取照片');
+    } finally {
+      if (mounted) setState(() => _pickingPhotos = false);
     }
   }
 
@@ -126,9 +141,13 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
   }
 
   Future<void> _save() async {
-    final existingCount =
-        (_entry(context)?.photos.length ?? 0) - _removedPhotoIds.length;
-    if (_text.text.trim().isEmpty && existingCount + _newPhotos.length == 0) {
+    if (_busy || _pickingPhotos) return;
+    final photoCount = _photoCount;
+    if (!isEntryPhotoCountAllowed(photoCount)) {
+      _message('照片数量超出上限', '每条记录最多可以添加 $maxEntryPhotos 张照片。');
+      return;
+    }
+    if (_text.text.trim().isEmpty && photoCount == 0) {
       _message('还没有内容', '写下一点文字，或添加一张照片再保存吧。');
       return;
     }
@@ -165,7 +184,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
           occurredAt: _date,
         ),
         removedPhotoIds: _removedPhotoIds.toList(),
-        newPhotos: _newPhotos,
+        newPhotos: List<XFile>.of(_newPhotos),
       );
       if (mounted) Navigator.pop(context, id);
     } catch (error) {
@@ -203,6 +222,9 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
             .where((photo) => !_removedPhotoIds.contains(photo.id))
             .toList() ??
         const <JournalPhoto>[];
+    final photoCount = visiblePhotos.length + _newPhotos.length;
+    final photoActionsDisabled =
+        _busy || _pickingPhotos || remainingEntryPhotoSlots(photoCount) == 0;
     return Scaffold(
       extendBody: true,
       bottomNavigationBar: ClipRect(
@@ -225,7 +247,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
                 child: PrimaryAction(
                   label: '保存记录',
-                  onPressed: _save,
+                  onPressed: _pickingPhotos ? null : _save,
                   busy: _busy,
                 ),
               ),
@@ -366,7 +388,9 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                       ),
                     ),
                     const SizedBox(height: 22),
-                    const _Label('照片 · 最多 5 张'),
+                    _Label(
+                      '照片 · 最多 $maxEntryPhotos 张 · $photoCount/$maxEntryPhotos',
+                    ),
                     if (visiblePhotos.isNotEmpty || _newPhotos.isNotEmpty)
                       SizedBox(
                         height: 92,
@@ -376,9 +400,11 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                             for (final photo in visiblePhotos)
                               _PhotoTile(
                                 path: photo.id,
-                                onRemove: () => setState(
-                                  () => _removedPhotoIds.add(photo.id),
-                                ),
+                                onRemove: _busy || _pickingPhotos
+                                    ? null
+                                    : () => setState(
+                                        () => _removedPhotoIds.add(photo.id),
+                                      ),
                               ),
                             for (
                               var index = 0;
@@ -387,8 +413,11 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                             )
                               _PhotoTile(
                                 path: _newPhotos[index].path,
-                                onRemove: () =>
-                                    setState(() => _newPhotos.removeAt(index)),
+                                onRemove: _busy || _pickingPhotos
+                                    ? null
+                                    : () => setState(
+                                        () => _newPhotos.removeAt(index),
+                                      ),
                               ),
                           ],
                         ),
@@ -397,13 +426,17 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                     Row(
                       children: [
                         FilledButton.tonalIcon(
-                          onPressed: () => _pickPhotos(ImageSource.gallery),
+                          onPressed: photoActionsDisabled
+                              ? null
+                              : () => _pickPhotos(ImageSource.gallery),
                           icon: const Icon(Icons.photo_library_outlined),
                           label: const Text('相册'),
                         ),
                         const SizedBox(width: 10),
                         FilledButton.tonalIcon(
-                          onPressed: () => _pickPhotos(ImageSource.camera),
+                          onPressed: photoActionsDisabled
+                              ? null
+                              : () => _pickPhotos(ImageSource.camera),
                           icon: const Icon(Icons.photo_camera_outlined),
                           label: const Text('拍照'),
                         ),
@@ -505,7 +538,7 @@ class _PhotoTile extends StatelessWidget {
   const _PhotoTile({required this.path, required this.onRemove});
 
   final String path;
-  final VoidCallback onRemove;
+  final VoidCallback? onRemove;
 
   @override
   Widget build(BuildContext context) {

@@ -9,6 +9,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 
 import '../models/journal_entry.dart';
+import '../utils/journal_limits.dart';
 
 class JournalRepository {
   static const _maxPhotoBytes = 6 * 1024 * 1024;
@@ -136,14 +137,6 @@ class JournalRepository {
   }
 
   Future<JournalPhoto> addPhoto(String entryId, XFile source) async {
-    final count =
-        Sqflite.firstIntValue(
-          await _db.rawQuery('SELECT COUNT(*) FROM photos WHERE entry_id = ?', [
-            entryId,
-          ]),
-        ) ??
-        0;
-    if (count >= 5) throw StateError('每条记录最多 5 张照片');
     final bytes = await source.readAsBytes();
     if (bytes.isEmpty || bytes.length > _maxPhotoBytes) {
       throw StateError('每张照片不能超过 6 MB');
@@ -155,16 +148,33 @@ class JournalRepository {
       _ => 'jpg',
     };
     final path = p.join(_photoDirectory!.path, '${_uuid.v4()}.$extension');
-    await File(path).writeAsBytes(bytes, flush: true);
+    final file = File(path);
+    var created = false;
     try {
-      await _db.insert('photos', {
-        'id': path,
-        'entry_id': entryId,
-        'mime': mime,
-        'created_at': DateTime.now().toUtc().toIso8601String(),
+      await file.create(exclusive: true);
+      created = true;
+      await file.writeAsBytes(bytes, flush: true);
+      await _db.transaction((txn) async {
+        final count =
+            Sqflite.firstIntValue(
+              await txn.rawQuery(
+                'SELECT COUNT(*) FROM photos WHERE entry_id = ?',
+                [entryId],
+              ),
+            ) ??
+            0;
+        if (!isEntryPhotoCountAllowed(count + 1)) {
+          throw StateError('每条记录最多添加 $maxEntryPhotos 张照片');
+        }
+        await txn.insert('photos', {
+          'id': path,
+          'entry_id': entryId,
+          'mime': mime,
+          'created_at': DateTime.now().toUtc().toIso8601String(),
+        });
       });
     } catch (_) {
-      await _deleteFile(path);
+      if (created) await _cleanupNewPhotoFiles([path]);
       rethrow;
     }
     return JournalPhoto(id: path, mime: mime);
@@ -223,8 +233,12 @@ class JournalRepository {
     }
     final entries = decoded['entries']! as List;
     if (entries.length > 10000) throw const FormatException('备份最多包含 10000 条记录');
-    var imported = 0;
-    var skipped = 0;
+    // Validate the complete backup before changing any record or photo file.
+    final prepared = <_BackupEntry>[];
+    final knownIds = (await _db.query('entries', columns: ['id']))
+        .map((row) => row['id']! as String)
+        .toSet();
+    var preSkipped = 0;
     for (final raw in entries) {
       if (raw is! Map<String, dynamic>) throw const FormatException('记录格式不正确');
       final id = raw['id'];
@@ -232,15 +246,8 @@ class JournalRepository {
       final customMood = raw.containsKey('customMood')
           ? _validatedCustomMood(raw['customMood'])
           : '';
-      final exists =
-          Sqflite.firstIntValue(
-            await _db.rawQuery('SELECT COUNT(*) FROM entries WHERE id = ?', [
-              id,
-            ]),
-          ) !=
-          0;
-      if (exists) {
-        skipped++;
+      if (knownIds.contains(id)) {
+        preSkipped++;
         continue;
       }
       final text = raw['text'];
@@ -249,14 +256,16 @@ class JournalRepository {
       if (text is! String ||
           text.length > 50000 ||
           tags is! List ||
-          photos is! List ||
-          photos.length > 5) {
+          photos is! List) {
         throw const FormatException('记录内容无效');
+      }
+      if (!isEntryPhotoCountAllowed(photos.length)) {
+        throw FormatException('每条记录最多添加 $maxEntryPhotos 张照片');
       }
       final now = DateTime.now().toUtc();
       final occurredAt = DateTime.tryParse(raw['occurredAt']?.toString() ?? '');
       if (occurredAt == null) throw const FormatException('记录日期无效');
-      await _db.insert('entries', {
+      final row = <String, Object?>{
         'id': id,
         'text': text.trim(),
         'type': EntryTypeText.parse(raw['type']?.toString() ?? '').value,
@@ -274,38 +283,75 @@ class JournalRepository {
               raw['updatedAt']?.toString() ?? '',
             )?.toUtc().toIso8601String() ??
             now.toIso8601String(),
-      });
-      try {
-        for (final photo in photos) {
-          if (photo is! Map<String, dynamic> || photo['base64'] is! String) {
-            throw const FormatException('照片格式不正确');
-          }
-          final data = base64Decode(photo['base64']! as String);
-          final mime = _detectMime(data);
-          final extension = mime == 'image/png'
-              ? 'png'
-              : mime == 'image/webp'
-              ? 'webp'
-              : 'jpg';
-          final path = p.join(
-            _photoDirectory!.path,
-            '${_uuid.v4()}.$extension',
-          );
-          await File(path).writeAsBytes(data, flush: true);
-          await _db.insert('photos', {
-            'id': path,
-            'entry_id': id,
-            'mime': mime,
-            'created_at': now.toIso8601String(),
-          });
+      };
+      final preparedPhotos = <_BackupPhoto>[];
+      for (final photo in photos) {
+        if (photo is! Map<String, dynamic> || photo['base64'] is! String) {
+          throw const FormatException('照片格式不正确');
         }
-        imported++;
-      } catch (_) {
-        await deleteEntry(id);
-        rethrow;
+        final encoded = photo['base64']! as String;
+        final data = base64Decode(encoded);
+        if (data.isEmpty || data.length > _maxPhotoBytes) {
+          throw const FormatException('每张照片不能超过 6 MB');
+        }
+        preparedPhotos.add(_BackupPhoto(encoded, _detectMime(data)));
       }
+      prepared.add(_BackupEntry(row, preparedPhotos, now));
+      knownIds.add(id);
     }
-    return (imported: imported, skipped: skipped);
+
+    final createdPaths = <String>[];
+    try {
+      return await _db.transaction((txn) async {
+        var imported = 0;
+        var skipped = preSkipped;
+        for (final entry in prepared) {
+          final id = entry.row['id']! as String;
+          final exists =
+              Sqflite.firstIntValue(
+                await txn.rawQuery('SELECT COUNT(*) FROM entries WHERE id = ?', [
+                  id,
+                ]),
+              ) !=
+              0;
+          if (exists) {
+            skipped++;
+            continue;
+          }
+          await txn.insert('entries', entry.row);
+          for (var index = 0; index < entry.photos.length; index++) {
+            final photo = entry.photos[index];
+            final extension = switch (photo.mime) {
+              'image/png' => 'png',
+              'image/webp' => 'webp',
+              _ => 'jpg',
+            };
+            final path = p.join(
+              _photoDirectory!.path,
+              '${_uuid.v4()}.$extension',
+            );
+            final file = File(path);
+            await file.create(exclusive: true);
+            createdPaths.add(path);
+            await file.writeAsBytes(base64Decode(photo.base64), flush: true);
+            await txn.insert('photos', {
+              'id': path,
+              'entry_id': id,
+              'mime': photo.mime,
+              'created_at': entry.photoDate
+                  .add(Duration(milliseconds: index))
+                  .toIso8601String(),
+            });
+          }
+          imported++;
+        }
+        return (imported: imported, skipped: skipped);
+      });
+    } catch (_) {
+      // Only files created exclusively by this attempt are eligible for cleanup.
+      await _cleanupNewPhotoFiles(createdPaths);
+      rethrow;
+    }
   }
 
   Map<String, Object?> _draftMap(EntryDraft draft) => {
@@ -394,4 +440,29 @@ class JournalRepository {
     final file = File(path);
     if (await file.exists()) await file.delete();
   }
+
+  Future<void> _cleanupNewPhotoFiles(Iterable<String> paths) async {
+    for (final path in paths) {
+      try {
+        await _deleteFile(path);
+      } on FileSystemException {
+        // Try every newly created file and keep the original operation error.
+      }
+    }
+  }
+}
+
+class _BackupEntry {
+  const _BackupEntry(this.row, this.photos, this.photoDate);
+
+  final Map<String, Object?> row;
+  final List<_BackupPhoto> photos;
+  final DateTime photoDate;
+}
+
+class _BackupPhoto {
+  const _BackupPhoto(this.base64, this.mime);
+
+  final String base64;
+  final String mime;
 }
