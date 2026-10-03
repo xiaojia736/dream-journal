@@ -136,15 +136,15 @@ class _DateBadge extends StatelessWidget {
           Icon(
             dark ? Icons.star_outline_rounded : Icons.calendar_today_outlined,
             size: 12,
-            color: dark ? AppColors.darkAccent : AppColors.lightPrimary,
+            color: dark ? AppColors.darkSelectedText : AppColors.lightPrimary,
           ),
           const SizedBox(width: 5),
           Text(
             shortDate(date.toLocal()),
             style: TextStyle(
-              color: dark ? AppColors.darkMuted : AppColors.lightMuted,
+              color: dark ? AppColors.darkSelectedText : AppColors.lightMuted,
               fontSize: 11,
-              fontWeight: FontWeight.w600,
+              fontWeight: dark ? FontWeight.w700 : FontWeight.w600,
             ),
           ),
         ],

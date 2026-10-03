@@ -131,8 +131,13 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        Chip(label: Text(entry.type.label)),
+                        Chip(
+                          label: Text(entry.type.label),
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                        ),
                         if (entry.hasMood)
                           MoodBadge(
                             mood: entry.mood,
