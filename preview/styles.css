@@ -396,30 +396,39 @@ input[type=range]{
   display:inline-flex;
   align-items:center;
   gap:5px;
-  border-radius:8px;
-  border:1px solid rgba(255,255,255,.24);
-  padding:4px 7px;
-  background:rgba(208,200,241,.72);
-  color:#2D2353;
-  font-size:10px;
-  font-weight:700}
+  min-width:0;
+  max-width:100%;
+  border-radius:10px;
+  padding:5px 9px;
+  background:rgba(255,255,255,.06);
+  color:#F4F0FF;
+  font-size:11.5px;
+  font-weight:500;
+  line-height:1.25}
+.date-badge-text{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap}
 .date-badge svg{
-  width:11px;
-  height:11px}
+  width:12px;
+  height:12px;
+  flex-shrink:0;
+  color:#DED5EF}
 .type-badge{
-  font-size:10px;
+  flex-shrink:0;
+  font-size:11px;
   font-weight:600;
   letter-spacing:.5px;
   color:var(--accent);
-  background:rgba(198,177,248,.16);
-  border-radius:7px;
-  padding:4px 8px}
+  background:rgba(255,255,255,.06);
+  border-radius:10px;
+  padding:5px 9px;
+  line-height:1.25}
 .type-badge[data-type=dream]{
-  color:#D1E6FA;
-  background:rgba(146,203,247,.16)}
+  color:#D1E6FA}
 .type-badge[data-type=os]{
-  color:#F6D6F0;
-  background:rgba(232,174,228,.16)}
+  color:#F6D6F0}
 .entry-title{
   font-size:18px;
   line-height:1.6;
@@ -1517,10 +1526,10 @@ textarea.text-field{
 .light .detail-text{
   color:var(--body)}
 .light .date-badge{
-  color:var(--muted);
-  font-weight:600;
-  background:rgba(255,255,255,.25);
-  border-color:var(--line)}
+  color:#685880;
+  background:rgba(165,148,204,.10)}
+.light .date-badge svg{
+  color:#89749F}
 .light .chip{
   border-color:rgba(118,89,144,.12)}
 .light .chip.selected{
@@ -1529,13 +1538,11 @@ textarea.text-field{
   border-color:rgba(141,113,189,.25)}
 .light .type-badge{
   color:#8D71BD;
-  background:rgba(141,113,189,.10)}
+  background:rgba(165,148,204,.10)}
 .light .type-badge[data-type=dream]{
-  color:#658DA7;
-  background:rgba(123,179,206,.12)}
+  color:#658DA7}
 .light .type-badge[data-type=os]{
-  color:#A571A6;
-  background:rgba(186,129,184,.12)}
+  color:#A571A6}
 .light .mood-badge{
   color:#78639F;
   background:rgba(141,113,189,.07);

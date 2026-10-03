@@ -21,6 +21,7 @@ class JournalRecordCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     final lines = fullContent
         ? entry.text.replaceAll('\r\n', '\n').split('\n')
         : entry.text.trim().split(RegExp(r'\n+'));
@@ -44,11 +45,14 @@ class JournalRecordCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _DateBadge(date: entry.occurredAt),
+              Flexible(child: _DateBadge(date: entry.occurredAt)),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                 decoration: BoxDecoration(
-                  color: AppColors.soft(context),
+                  color: dark
+                      ? Colors.white.withValues(alpha: .06)
+                      : AppColors.lightSoft,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
@@ -118,33 +122,33 @@ class _DateBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
         color: dark
-            ? AppColors.darkSoft.withValues(alpha: .72)
-            : const Color(0xfffff5ec),
-        borderRadius: BorderRadius.circular(9),
-        border: Border.all(
-          color: dark
-              ? AppColors.darkBorder
-              : AppColors.lightPrimary.withValues(alpha: .17),
-        ),
+            ? Colors.white.withValues(alpha: .06)
+            : AppColors.lightSoft,
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            dark ? Icons.star_outline_rounded : Icons.calendar_today_outlined,
+            Icons.calendar_today_outlined,
             size: 12,
-            color: dark ? AppColors.darkSelectedText : AppColors.lightPrimary,
+            color: dark ? const Color(0xffded5ef) : const Color(0xff89749f),
           ),
           const SizedBox(width: 5),
-          Text(
-            shortDate(date.toLocal()),
-            style: TextStyle(
-              color: dark ? AppColors.darkSelectedText : AppColors.lightMuted,
-              fontSize: 11,
-              fontWeight: dark ? FontWeight.w700 : FontWeight.w600,
+          Flexible(
+            child: Text(
+              shortDate(date.toLocal()),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: dark ? const Color(0xfff4f0ff) : const Color(0xff685880),
+                fontSize: 11.5,
+                fontWeight: FontWeight.w500,
+                height: 1.25,
+              ),
             ),
           ),
         ],

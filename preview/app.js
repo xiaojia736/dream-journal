@@ -48,6 +48,7 @@
   const localDate = date => [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
   const localTime = date => `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
   const shortDate = value => { const date = new Date(value); return `${date.getMonth() + 1}月${date.getDate()}日`; };
+  const recordDate = value => { const date = new Date(value); return `${date.getFullYear()} 年 ${date.getMonth() + 1} 月 ${date.getDate()} 日`; };
   const headingDate = () => new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }).format(new Date());
   const detailDate = value => new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long', hour: '2-digit', minute: '2-digit' }).format(new Date(value));
 
@@ -150,7 +151,7 @@
     const body = separator < 0 ? '' : text.slice(separator + 1);
     const photos = fullContent ? entry.photos : entry.photos.slice(0, 3);
     return `<button type="button" class="entry-card glass${fullContent ? ' entry-card-full' : ''}" data-action="detail" data-id="${escape(entry.id)}">
-      <div class="card-meta"><span class="date-badge">${icon('calendar')} ${shortDate(entry.occurredAt)}</span><span class="type-badge" data-type="${escape(entry.type)}">${TYPES[entry.type]}</span></div>
+      <div class="card-meta"><span class="date-badge">${icon('calendar')}<span class="date-badge-text">${recordDate(entry.occurredAt)}</span></span><span class="type-badge" data-type="${escape(entry.type)}">${TYPES[entry.type]}</span></div>
       <h3 class="entry-title">${escape(title)}</h3>
       ${body ? `<p class="entry-summary">${escape(fullContent ? body : body.split(/\n+/).join(' '))}</p>` : ''}
       ${photos.length ? `<div class="${fullContent ? 'recall-photos' : 'photo-strip'}">${photos.map((photo, index) => `<img src="${escape(photo)}" alt="记录照片 ${index + 1}" loading="lazy">`).join('')}</div>` : ''}
