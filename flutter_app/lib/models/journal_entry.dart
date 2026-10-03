@@ -62,6 +62,7 @@ class JournalEntry {
     required this.text,
     required this.type,
     required this.mood,
+    this.customMood = '',
     required this.tags,
     required this.occurredAt,
     required this.createdAt,
@@ -73,17 +74,28 @@ class JournalEntry {
   final String text;
   final EntryType type;
   final Mood mood;
+  final String customMood;
   final List<String> tags;
   final DateTime occurredAt;
   final DateTime createdAt;
   final DateTime updatedAt;
   final List<JournalPhoto> photos;
 
-  JournalEntry copyWith({List<JournalPhoto>? photos}) => JournalEntry(
+  String get moodLabel => customMood.trim().isNotEmpty
+      ? customMood.trim()
+      : mood.label;
+
+  bool get hasMood => moodLabel.isNotEmpty;
+
+  JournalEntry copyWith({
+    List<JournalPhoto>? photos,
+    String? customMood,
+  }) => JournalEntry(
     id: id,
     text: text,
     type: type,
     mood: mood,
+    customMood: customMood ?? this.customMood,
     tags: tags,
     occurredAt: occurredAt,
     createdAt: createdAt,
@@ -97,6 +109,7 @@ class EntryDraft {
     required this.text,
     required this.type,
     required this.mood,
+    this.customMood = '',
     required this.tags,
     required this.occurredAt,
   });
@@ -104,6 +117,7 @@ class EntryDraft {
   final String text;
   final EntryType type;
   final Mood mood;
+  final String customMood;
   final List<String> tags;
   final DateTime occurredAt;
 }

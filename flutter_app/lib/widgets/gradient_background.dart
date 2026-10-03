@@ -12,94 +12,78 @@ class GradientBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: dark
-                  ? const [Color(0xff0d0b18), Color(0xff151226)]
-                  : const [Color(0xfffaf7f2), Color(0xfff5efeb)],
-            ),
-          ),
-        ),
-        Positioned.fill(
-          child: DecoratedBox(
+    return LayoutBuilder(
+      builder: (context, constraints) => Stack(
+        fit: StackFit.expand,
+        children: [
+          DecoratedBox(
             decoration: BoxDecoration(
-              gradient: RadialGradient(
-                center: dark
-                    ? const Alignment(.72, -.82)
-                    : const Alignment(.76, -.9),
-                radius: dark ? 1.05 : .95,
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                stops: dark ? const [0, .5, 1] : null,
                 colors: dark
-                    ? const [Color(0x524c3f8f), Color(0x00151226)]
-                    : const [Color(0x52ffd9bd), Color(0x00faf7f2)],
+                    ? const [
+                        AppColors.darkBackground,
+                        AppColors.darkCanvasMiddle,
+                        AppColors.darkCanvasBottom,
+                      ]
+                    : const [Color(0xfffaf7f2), Color(0xfff5efeb)],
               ),
             ),
           ),
-        ),
-        if (dark)
-          const Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  center: Alignment(-.9, .72),
-                  radius: .9,
-                  colors: [Color(0x36306978), Color(0x000d0b18)],
+          if (dark) ...[
+            Positioned(
+              left: -constraints.maxWidth * .1,
+              top: constraints.maxHeight * .05,
+              child: IgnorePointer(
+                child: ImageFiltered(
+                  imageFilter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
+                  child: Container(
+                    width: 260,
+                    height: 260,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.auroraCyan,
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
-        IgnorePointer(child: CustomPaint(painter: _StarFieldPainter(dark))),
-        child,
-      ],
+            Positioned(
+              right: -constraints.maxWidth * .15,
+              bottom: constraints.maxHeight * .15,
+              child: IgnorePointer(
+                child: ImageFiltered(
+                  imageFilter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
+                  child: Container(
+                    width: 320,
+                    height: 320,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.dreamyViolet,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ] else
+            const Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: Alignment(.76, -.9),
+                    radius: .95,
+                    colors: [Color(0x52ffd9bd), Color(0x00faf7f2)],
+                  ),
+                ),
+              ),
+            ),
+          child,
+        ],
+      ),
     );
   }
-}
-
-class _StarFieldPainter extends CustomPainter {
-  const _StarFieldPainter(this.dark);
-
-  final bool dark;
-
-  static const _stars = <Offset>[
-    Offset(.08, .09),
-    Offset(.23, .17),
-    Offset(.42, .08),
-    Offset(.69, .12),
-    Offset(.88, .06),
-    Offset(.95, .27),
-    Offset(.73, .34),
-    Offset(.14, .38),
-    Offset(.34, .48),
-    Offset(.84, .55),
-    Offset(.56, .66),
-    Offset(.11, .72),
-    Offset(.29, .83),
-    Offset(.76, .88),
-    Offset(.93, .76),
-  ];
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = (dark ? AppColors.darkAccent : AppColors.lightAccent)
-          .withValues(alpha: dark ? .3 : .09);
-    for (var i = 0; i < _stars.length; i++) {
-      final star = _stars[i];
-      canvas.drawCircle(
-        Offset(star.dx * size.width, star.dy * size.height),
-        i % 4 == 0 ? 1.4 : .7,
-        paint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(_StarFieldPainter oldDelegate) => oldDelegate.dark != dark;
 }
 
 class GlassCard extends StatelessWidget {
@@ -111,6 +95,7 @@ class GlassCard extends StatelessWidget {
     this.onTap,
     this.radius = 18,
     this.tint,
+    this.diary = false,
   });
 
   final Widget child;
@@ -119,6 +104,7 @@ class GlassCard extends StatelessWidget {
   final VoidCallback? onTap;
   final double radius;
   final Color? tint;
+  final bool diary;
 
   @override
   Widget build(BuildContext context) {
@@ -131,46 +117,48 @@ class GlassCard extends StatelessWidget {
         boxShadow: [
           if (dark)
             BoxShadow(
-              color: AppColors.darkPrimary.withValues(alpha: .1),
-              blurRadius: 18,
+              color: (tint ?? AppColors.writeViolet).withValues(alpha: .04),
+              blurRadius: 24,
               spreadRadius: -5,
             ),
           BoxShadow(
             color: (dark ? Colors.black : const Color(0xffb49682)).withValues(
-              alpha: dark ? .2 : .08,
+              alpha: dark ? (diary ? .25 : .12) : .08,
             ),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
+            blurRadius: dark && diary ? 36 : 24,
+            offset: Offset(0, dark && diary ? 16 : 10),
           ),
         ],
       ),
       child: ClipRRect(
         borderRadius: borderRadius,
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
           child: Material(
             color: Colors.transparent,
             child: Ink(
               decoration: BoxDecoration(
                 borderRadius: borderRadius,
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: dark
-                      ? [
-                          (tint ?? const Color(0xff2d244a)).withValues(
-                            alpha: .6,
-                          ),
-                          const Color(0xff16122a).withValues(alpha: .7),
-                        ]
-                      : [
+                color: dark
+                    ? diary
+                          ? AppColors.darkDiaryCard
+                          : AppColors.darkCard
+                    : null,
+                gradient: dark
+                    ? null
+                    : LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
                           Colors.white.withValues(alpha: .9),
                           const Color(0xfffffbf7).withValues(alpha: .84),
                         ],
-                ),
+                      ),
                 border: Border.all(
                   color: dark
-                      ? Colors.white.withValues(alpha: .12)
+                      ? diary
+                            ? AppColors.darkDiaryBorder
+                            : AppColors.darkBorder
                       : const Color(0xfffffdf9),
                 ),
               ),
@@ -211,9 +199,7 @@ class PageTitle extends StatelessWidget {
             Text(
               subtitle!,
               style: TextStyle(
-                color: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.color?.withValues(alpha: .72),
+                color: AppColors.muted(context),
                 height: 1.5,
               ),
             ),
@@ -247,16 +233,18 @@ class PrimaryAction extends StatelessWidget {
         height: 54,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            colors: dark
-                ? const [Color(0xff7c3aed), Color(0xffa855f7)]
-                : const [Color(0xffe07a5f), Color(0xffe9a66e)],
-          ),
+          gradient: dark
+              ? AppColors.writeGradient
+              : const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xffe07a5f), Color(0xffe9a66e)],
+                ),
           boxShadow: [
             BoxShadow(
-              color: (dark ? const Color(0xffa78bfa) : AppColors.lightPrimary)
-                  .withValues(alpha: .35),
-              blurRadius: 12,
+              color: (dark ? AppColors.writeViolet : AppColors.lightPrimary)
+                  .withValues(alpha: .28),
+              blurRadius: 18,
               spreadRadius: -2,
             ),
           ],

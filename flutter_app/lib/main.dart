@@ -8,6 +8,7 @@ import 'screens/main_shell.dart';
 import 'state/app_state.dart';
 import 'state/app_state_scope.dart';
 import 'theme/app_theme.dart';
+import 'widgets/gradient_background.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -65,17 +66,10 @@ class _StartupScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xff0d0b18),
-      body: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: RadialGradient(
-            center: Alignment(.35, -.35),
-            radius: 1.05,
-            colors: [Color(0xff29204d), Color(0xff0d0b18)],
-          ),
-        ),
-        child: Center(
+    return GradientBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -86,7 +80,7 @@ class _StartupScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(28),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xff8a70d6).withValues(alpha: .38),
+                      color: AppColors.writeViolet.withValues(alpha: .2),
                       blurRadius: 30,
                       spreadRadius: 2,
                     ),
@@ -102,7 +96,6 @@ class _StartupScreen extends StatelessWidget {
               const Text(
                 '星海日记',
                 style: TextStyle(
-                  color: Color(0xffe9ecef),
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 1.2,
@@ -121,7 +114,7 @@ class _StartupScreen extends StatelessWidget {
                   height: 18,
                   child: CircularProgressIndicator(
                     strokeWidth: 1.6,
-                    color: Color(0xffffeaa7),
+                    color: AppColors.writeBlue,
                   ),
                 ),
             ],

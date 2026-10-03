@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0B0819">
+  <title>星海日记 · 梦境浮光预览</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="daily-quotes.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <main class="preview-layout">
+    <aside class="presentation">
+      <div class="brand-mark" aria-hidden="true">✧</div>
+      <div class="eyebrow">STAR SEA JOURNAL</div>
+      <h1>把平凡的日子，<br>收藏成微光。</h1>
+      <p class="intro">星海日记 · 梦境浮光<br>一处容纳生活、心情和梦境的私人空间。</p>
+      <div class="preview-controls" aria-label="预览控制">
+        <span class="control-label">预览内容</span>
+        <div class="segmented" id="mode-control">
+          <button type="button" data-mode="demo" class="selected">示例记录</button>
+          <button type="button" data-mode="personal">我的试用</button>
+        </div>
+        <p id="mode-note" class="preview-note">示例记录仅供查看设计，不会加入你的试用记录。</p>
+        <label class="control-label width-label" for="device-width">屏幕宽度 <span id="width-value">390 px</span></label>
+        <input id="device-width" type="range" min="360" max="430" step="10" value="390">
+        <button type="button" class="empty-button" id="show-empty">查看空白状态</button>
+      </div>
+      <p class="desktop-footnote">无需编译 APK，即可查看界面与交互。<br>本页的试用记录只保存在当前浏览器，与手机数据独立。<br>网页预览中的隐私锁只演示界面，不提供安全保护。</p>
+    </aside>
+
+    <section class="device-stage" aria-label="星海日记手机预览">
+      <div class="device" id="device">
+        <div class="phone-canvas" id="phone-canvas">
+          <div class="orb orb-cyan" aria-hidden="true"></div>
+          <div class="orb orb-violet" aria-hidden="true"></div>
+          <div class="status-bar" aria-hidden="true">
+            <span id="status-time">9:41</span>
+            <div class="device-camera"></div>
+            <div class="status-symbols"><span class="signal">▂▄▆</span><svg viewBox="0 0 24 18"><path d="M2 6a16 16 0 0 1 20 0M5 10a11 11 0 0 1 14 0M9 14a4 4 0 0 1 6 0"/></svg><span class="battery"><i></i></span></div>
+          </div>
+          <div class="app-content" id="app-content"></div>
+          <div id="editor-action"></div>
+          <div id="floating-action"></div>
+          <nav class="bottom-nav" id="bottom-nav" aria-label="主要导航"></nav>
+          <div class="home-indicator" aria-hidden="true"></div>
+          <div id="modal-root"></div>
+          <div class="toast" id="toast" role="status" aria-live="polite"></div>
+        </div>
+      </div>
+      <div class="stage-caption"><span class="live-dot"></span> 可交互网页预览 <span class="caption-separator">/</span> 梦境浮光</div>
+    </section>
+
+    <aside class="design-notes" aria-label="设计说明">
+      <div class="note-number">01 / VISUAL DIRECTION</div>
+      <h2>梦境浮光</h2>
+      <p>深紫蓝画布，两团晕开的流光。<br>让每一段记忆，都有轻盈的轮廓。</p>
+      <div class="swatches"><span style="--swatch:#131127"></span><span style="--swatch:#1A1635"></span><span style="--swatch:#7C5CFC"></span><span style="--swatch:#4FACFE"></span></div>
+      <div class="design-rule"><span>柔光</span><p>水蓝与紫粉，安静地交织</p></div>
+      <div class="design-rule"><span>磨砂</span><p>半透明卡片，月光般的细边</p></div>
+      <div class="design-rule"><span>留白</span><p>让文字与情绪自然呼吸</p></div>
+      <p class="interaction-tip">试试点击记录、翻看我的星海里的照片，<br>或按右下角按钮写下此刻。</p>
+    </aside>
+  </main>
+  <input type="file" id="gallery-input" accept="image/*" multiple hidden>
+  <input type="file" id="camera-input" accept="image/*" capture="environment" hidden>
+  <input type="file" id="backup-input" accept=".json,application/json" hidden>
+</body>
+</html>

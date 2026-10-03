@@ -1,15 +1,32 @@
 import 'package:flutter/material.dart';
 
 abstract final class AppColors {
-  static const darkBackground = Color(0xff0d0b18);
-  static const darkCard = Color(0xff1f1a35);
-  static const darkText = Color(0xfff8fafc);
-  static const darkMuted = Color(0xffa5a1b8);
-  static const darkPrimary = Color(0xffa78bfa);
-  static const darkBlue = Color(0xff70c1b3);
+  static const darkBackground = Color(0xff131127);
+  static const darkCanvasMiddle = Color(0xff1a1635);
+  static const darkCanvasBottom = Color(0xff0f0d20);
+  static const darkCard = Color.fromRGBO(255, 255, 255, .07);
+  static const darkDiaryCard = Color.fromRGBO(255, 255, 255, .06);
+  static const darkText = Color(0xfff8f9fe);
+  static const darkBody = Color(0xffdcd9ee);
+  static const darkMuted = Color(0xff8e8aa8);
+  static const darkCapsuleMuted = Color(0xffa29db8);
+  static const darkSelected = Color.fromRGBO(255, 255, 255, .9);
+  static const darkSelectedText = Color(0xff2d2353);
+  static const darkPrimary = Color(0xffad9cff);
+  static const darkBlue = Color(0xff48dbfb);
   static const darkAccent = Color(0xffffe082);
-  static const darkBorder = Color(0xff51456f);
-  static const darkSoft = Color(0xff352c55);
+  static const darkBorder = Color.fromRGBO(255, 255, 255, .15);
+  static const darkDiaryBorder = Color.fromRGBO(255, 255, 255, .12);
+  static const darkSoft = Color(0xff251d3e);
+  static const auroraCyan = Color.fromRGBO(72, 219, 251, .22);
+  static const dreamyViolet = Color.fromRGBO(217, 128, 250, .22);
+  static const writeViolet = Color(0xff7c5cfc);
+  static const writeBlue = Color(0xff4facfe);
+  static const writeGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [writeViolet, writeBlue],
+  );
 
   static const lightBackground = Color(0xfffaf7f2);
   static const lightCard = Color(0xffffffff);
@@ -22,6 +39,10 @@ abstract final class AppColors {
 
   static Color muted(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark ? darkMuted : lightMuted;
+  static Color body(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? darkBody : lightText;
+  static Color heading(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? darkText : lightText;
   static Color accent(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark
       ? darkAccent
@@ -68,7 +89,7 @@ abstract final class AppTheme {
           secondary: brightness == Brightness.dark
               ? AppColors.darkAccent
               : AppColors.lightAccent,
-          onSurface: text,
+          onSurface: brightness == Brightness.dark ? AppColors.darkBody : text,
           surface: card,
         );
     return ThemeData(
@@ -98,9 +119,19 @@ abstract final class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: brightness == Brightness.dark
-            ? const Color(0xff2d244a).withValues(alpha: .5)
+            ? AppColors.darkCard
             : card.withValues(alpha: .82),
         isDense: true,
+        hintStyle: TextStyle(
+          color: brightness == Brightness.dark
+              ? AppColors.darkMuted
+              : AppColors.lightMuted,
+        ),
+        labelStyle: TextStyle(
+          color: brightness == Brightness.dark
+              ? AppColors.darkMuted
+              : AppColors.lightMuted,
+        ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 14,
           vertical: 12,
@@ -124,31 +155,39 @@ abstract final class AppTheme {
       ),
       textTheme: ThemeData(
         brightness: brightness,
-      ).textTheme.apply(bodyColor: text, displayColor: text),
+      ).textTheme.apply(
+        bodyColor: brightness == Brightness.dark ? AppColors.darkBody : text,
+        displayColor: text,
+      ),
       dividerTheme: DividerThemeData(
         color: brightness == Brightness.dark
-            ? AppColors.darkBorder.withValues(alpha: .52)
+            ? Colors.white.withValues(alpha: .08)
             : AppColors.lightBorder,
         thickness: 1,
         space: 1,
       ),
       chipTheme: ChipThemeData(
         backgroundColor: brightness == Brightness.dark
-            ? const Color(0xff2d244a).withValues(alpha: .34)
+            ? Colors.transparent
             : AppColors.lightSoft,
         selectedColor: brightness == Brightness.dark
-            ? AppColors.darkPrimary.withValues(alpha: .25)
+            ? AppColors.darkSelected
             : AppColors.lightPrimary.withValues(alpha: .16),
-        side: BorderSide(
-          color: brightness == Brightness.dark
-              ? Colors.white.withValues(alpha: .08)
-              : AppColors.lightBorder,
-        ),
+        side: brightness == Brightness.dark
+            ? BorderSide.none
+            : const BorderSide(color: AppColors.lightBorder),
         shape: const StadiumBorder(),
-        labelStyle: TextStyle(
-          color: brightness == Brightness.dark
-              ? AppColors.darkMuted
-              : AppColors.lightMuted,
+        checkmarkColor: brightness == Brightness.dark
+            ? AppColors.darkSelectedText
+            : AppColors.lightText,
+        labelStyle: WidgetStateTextStyle.resolveWith(
+          (states) => TextStyle(
+            color: brightness == Brightness.dark
+                ? states.contains(WidgetState.selected)
+                      ? AppColors.darkSelectedText
+                      : AppColors.darkCapsuleMuted
+                : AppColors.lightMuted,
+          ),
         ),
       ),
     );

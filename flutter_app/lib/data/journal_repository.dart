@@ -23,7 +23,7 @@ class JournalRepository {
     await _photoDirectory!.create(recursive: true);
     _database = await openDatabase(
       p.join(await getDatabasesPath(), 'star_sea_journal.sqlite'),
-      version: 1,
+      version: 2,
       onConfigure: (db) async => db.execute('PRAGMA foreign_keys = ON'),
       onCreate: (db, _) async {
         await db.execute('''
@@ -32,6 +32,7 @@ class JournalRepository {
             text TEXT NOT NULL,
             type TEXT NOT NULL,
             mood TEXT NOT NULL,
+            custom_mood TEXT NOT NULL DEFAULT '',
             tags_json TEXT NOT NULL,
             occurred_at TEXT NOT NULL,
             created_at TEXT NOT NULL,
@@ -52,6 +53,13 @@ class JournalRepository {
         await db.execute(
           'CREATE INDEX photos_entry ON photos(entry_id, created_at)',
         );
+      },
+      onUpgrade: (db, oldVersion, _) async {
+        if (oldVersion < 2) {
+          await db.execute(
+            "ALTER TABLE entries ADD COLUMN custom_mood TEXT NOT NULL DEFAULT ''",
+          );
+        }
       },
     );
   }
@@ -185,6 +193,7 @@ class JournalRepository {
         'text': entry.text,
         'type': entry.type.value,
         'mood': entry.mood.value,
+        'customMood': entry.customMood,
         'tags': entry.tags,
         'occurredAt': entry.occurredAt.toUtc().toIso8601String(),
         'createdAt': entry.createdAt.toUtc().toIso8601String(),
@@ -220,6 +229,9 @@ class JournalRepository {
       if (raw is! Map<String, dynamic>) throw const FormatException('记录格式不正确');
       final id = raw['id'];
       if (id is! String || id.isEmpty) throw const FormatException('记录编号无效');
+      final customMood = raw.containsKey('customMood')
+          ? _validatedCustomMood(raw['customMood'])
+          : '';
       final exists =
           Sqflite.firstIntValue(
             await _db.rawQuery('SELECT COUNT(*) FROM entries WHERE id = ?', [
@@ -249,6 +261,7 @@ class JournalRepository {
         'text': text.trim(),
         'type': EntryTypeText.parse(raw['type']?.toString() ?? '').value,
         'mood': MoodText.parse(raw['mood']?.toString() ?? '').value,
+        'custom_mood': customMood,
         'tags_json': jsonEncode(tags.map((value) => value.toString()).toList()),
         'occurred_at': occurredAt.toUtc().toIso8601String(),
         'created_at':
@@ -299,6 +312,7 @@ class JournalRepository {
     'text': draft.text.trim(),
     'type': draft.type.value,
     'mood': draft.mood.value,
+    'custom_mood': _validatedCustomMood(draft.customMood),
     'tags_json': jsonEncode(draft.tags),
     'occurred_at': draft.occurredAt.toUtc().toIso8601String(),
   };
@@ -340,12 +354,20 @@ class JournalRepository {
       text: row['text']! as String,
       type: EntryTypeText.parse(row['type']! as String),
       mood: MoodText.parse(row['mood']! as String),
+      customMood: row['custom_mood'] as String? ?? '',
       tags: rawTags.map((value) => value.toString()).toList(),
       occurredAt: DateTime.parse(row['occurred_at']! as String).toLocal(),
       createdAt: DateTime.parse(row['created_at']! as String).toLocal(),
       updatedAt: DateTime.parse(row['updated_at']! as String).toLocal(),
       photos: photos,
     );
+  }
+
+  String _validatedCustomMood(Object? value) {
+    if (value is! String) throw const FormatException('自定义心情必须是文字');
+    final trimmed = value.trim();
+    if (trimmed.length > 20) throw const FormatException('自定义心情最多 20 个字符');
+    return trimmed;
   }
 
   String _detectMime(Uint8List bytes) {

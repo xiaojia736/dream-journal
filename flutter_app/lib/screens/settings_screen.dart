@@ -1,21 +1,74 @@
+import 'dart:async';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../state/app_state_scope.dart';
 import '../theme/app_theme.dart';
+import '../utils/daily_quote.dart';
 import '../widgets/gradient_background.dart';
 import 'pin_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key});
+  const SettingsScreen({super.key, this.active = true});
+
+  final bool active;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class _SettingsScreenState extends State<SettingsScreen>
+    with WidgetsBindingObserver {
   bool _busy = false;
+  bool _backupMenuOpen = false;
+  DateTime _quoteDate = DateTime.now();
+  Timer? _quoteTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _scheduleQuoteRefresh();
+  }
+
+  @override
+  void didUpdateWidget(SettingsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.active && !oldWidget.active) _refreshQuoteDate();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _refreshQuoteDate();
+  }
+
+  void _refreshQuoteDate() {
+    if (!mounted) return;
+    final now = DateTime.now();
+    if (!DateUtils.isSameDay(now, _quoteDate)) {
+      setState(() => _quoteDate = now);
+    }
+    _scheduleQuoteRefresh();
+  }
+
+  void _scheduleQuoteRefresh() {
+    _quoteTimer?.cancel();
+    final now = DateTime.now();
+    final midnight = DateTime(now.year, now.month, now.day + 1);
+    _quoteTimer = Timer(
+      midnight.difference(now) + const Duration(seconds: 1),
+      _refreshQuoteDate,
+    );
+  }
+
+  @override
+  void dispose() {
+    _quoteTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
 
   Future<void> _exportBackup() async {
     setState(() => _busy = true);
@@ -81,6 +134,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _openBackupMenu() async {
+    if (_busy || _backupMenuOpen) return;
+    _backupMenuOpen = true;
+    try {
+      final action = await showModalBottomSheet<_BackupAction>(
+        context: context,
+        useSafeArea: true,
+        showDragHandle: true,
+        builder: (sheetContext) => SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.file_download_outlined),
+                  title: const Text('导入备份'),
+                  onTap: () => Navigator.pop(
+                    sheetContext,
+                    _BackupAction.importBackup,
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.ios_share_outlined),
+                  title: const Text('导出完整备份'),
+                  onTap: () => Navigator.pop(
+                    sheetContext,
+                    _BackupAction.exportBackup,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      if (!mounted || action == null) return;
+      if (action == _BackupAction.importBackup) {
+        await _importBackup();
+      } else {
+        await _exportBackup();
+      }
+    } finally {
+      _backupMenuOpen = false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = AppStateScope.of(context);
@@ -88,248 +188,84 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: SafeArea(
         bottom: false,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 80),
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 130),
           children: [
-            const PageTitle('设置', subtitle: '管理你的记录与私人空间'),
-            const _InfoCard(
-              icon: Icons.phone_android,
-              title: '这部手机',
-              subtitle: '无需网络即可记录。换手机前请先导出完整备份。',
-            ),
-            const SizedBox(height: 22),
-            const _SectionLabel('外观与隐私'),
-            _SettingsGroup(
-              dataTone: true,
-              children: [
-                _SettingsRow(
-                  icon: state.isDark
-                      ? Icons.light_mode_outlined
-                      : Icons.dark_mode_outlined,
-                  title: state.isDark ? '切换浅色外观' : '切换深色外观',
-                  onTap: () => state.setDark(!state.isDark),
-                ),
-                _SettingsRow(
-                  icon: Icons.lock_outline_rounded,
-                  title: '隐私锁',
-                  subtitle: state.hasPin ? '已开启' : '未开启',
-                  onTap: () => Navigator.of(context).push<void>(
-                    MaterialPageRoute(builder: (_) => const PinScreen()),
+            SizedBox(
+              height: 48,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  _TopAction(
+                    icon: state.isDark
+                        ? Icons.light_mode_outlined
+                        : Icons.dark_mode_outlined,
+                    tooltip: state.isDark ? '切换浅色外观' : '切换深色外观',
+                    onPressed: () => state.setDark(!state.isDark),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 22),
-            const _SectionLabel('数据'),
-            _SettingsGroup(
-              children: [
-                _SettingsRow(
-                  icon: Icons.file_download_outlined,
-                  title: '导入备份',
-                  subtitle: '选择 Flutter 版导出的 JSON',
-                  enabled: !_busy,
-                  onTap: _importBackup,
-                ),
-                _SettingsRow(
-                  icon: Icons.ios_share_outlined,
-                  title: '导出完整备份',
-                  subtitle: '包含文字、情绪、标签和照片',
-                  enabled: !_busy,
-                  onTap: _exportBackup,
-                ),
-              ],
-            ),
-            if (_busy)
-              const Padding(
-                padding: EdgeInsets.all(16),
-                child: Center(child: CircularProgressIndicator()),
-              ),
-            Padding(
-              padding: const EdgeInsets.only(top: 15),
-              child: Text(
-                '星海日记 · 你的生活收藏夹',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.muted(context), fontSize: 12),
+                  const SizedBox(width: 8),
+                  _TopAction(
+                    icon: Icons.lock_outline_rounded,
+                    tooltip: '隐私锁',
+                    onPressed: () => Navigator.of(context).push<void>(
+                      MaterialPageRoute(builder: (_) => const PinScreen()),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  _TopAction(
+                    icon: Icons.backup_outlined,
+                    tooltip: '备份',
+                    onPressed: _busy ? null : _openBackupMenu,
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _InfoCard extends StatelessWidget {
-  const _InfoCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassCard(
-      padding: const EdgeInsets.all(18),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.soft(context),
-            ),
-            child: Icon(
-              icon,
-              size: 19,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  subtitle,
+            const SizedBox(height: 20),
+            ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 260),
+              child: GlassCard(
+                padding: const EdgeInsets.all(28),
+                child: Text(
+                  dailyQuote(_quoteDate),
+                  textAlign: TextAlign.start,
                   style: TextStyle(
-                    color: AppColors.muted(context),
-                    fontSize: 12,
-                    height: 1.5,
+                    color: AppColors.body(context),
+                    fontSize: 18,
+                    fontWeight: FontWeight.w400,
+                    height: 1.95,
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.label);
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 9),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: AppColors.muted(context),
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          letterSpacing: .7,
+            const SizedBox(height: 20),
+          ],
         ),
       ),
     );
   }
 }
 
-class _SettingsGroup extends StatelessWidget {
-  const _SettingsGroup({required this.children, this.dataTone = false});
+enum _BackupAction { importBackup, exportBackup }
 
-  final List<_SettingsRow> children;
-  final bool dataTone;
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassCard(
-      padding: EdgeInsets.zero,
-      tint: dataTone && Theme.of(context).brightness == Brightness.dark
-          ? const Color(0xff243d4a)
-          : null,
-      child: Column(
-        children: [
-          for (var i = 0; i < children.length; i++) ...[
-            children[i],
-            if (i < children.length - 1)
-              Padding(
-                padding: const EdgeInsets.only(left: 66),
-                child: Divider(
-                  color: AppColors.border(context).withValues(alpha: .55),
-                ),
-              ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _SettingsRow extends StatelessWidget {
-  const _SettingsRow({
+class _TopAction extends StatelessWidget {
+  const _TopAction({
     required this.icon,
-    required this.title,
-    required this.onTap,
-    this.subtitle,
-    this.enabled = true,
+    required this.tooltip,
+    required this.onPressed,
   });
 
   final IconData icon;
-  final String title;
-  final String? subtitle;
-  final VoidCallback onTap;
-  final bool enabled;
+  final String tooltip;
+  final VoidCallback? onPressed;
 
   @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: EdgeInsets.zero,
-      color: Colors.transparent,
-      shape: const RoundedRectangleBorder(),
-      child: ListTile(
-        enabled: enabled,
-        onTap: enabled ? onTap : null,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        leading: Container(
-          width: 35,
-          height: 35,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(11),
-            color: AppColors.soft(context),
-          ),
-          child: Icon(
-            icon,
-            size: 18,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-        ),
-        title: Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-        ),
-        subtitle: subtitle == null
-            ? null
-            : Text(
-                subtitle!,
-                style: TextStyle(
-                  color: AppColors.muted(context),
-                  fontSize: 11,
-                  height: 1.5,
-                ),
-              ),
-        trailing: Icon(
-          Icons.chevron_right_rounded,
-          size: 20,
-          color: AppColors.muted(context),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => SizedBox.square(
+    dimension: 44,
+    child: IconButton(
+      tooltip: tooltip,
+      onPressed: onPressed,
+      icon: Icon(icon, size: 20),
+      color: AppColors.heading(context),
+      padding: EdgeInsets.zero,
+    ),
+  );
 }

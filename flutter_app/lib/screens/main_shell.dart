@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
@@ -18,9 +20,14 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBody: true,
       body: IndexedStack(
         index: _index,
-        children: const [HomeScreen(), StatsScreen(), SettingsScreen()],
+        children: [
+          const HomeScreen(),
+          StatsScreen(active: _index == 1),
+          SettingsScreen(active: _index == 2),
+        ],
       ),
       bottomNavigationBar: _StarlightNavigation(
         selectedIndex: _index,
@@ -41,109 +48,112 @@ class _StarlightNavigation extends StatelessWidget {
 
   static const _items = [
     (Icons.auto_awesome_outlined, Icons.auto_awesome, '记录'),
-    (Icons.grid_view_outlined, Icons.grid_view_rounded, '图鉴'),
-    (Icons.tune_outlined, Icons.tune_rounded, '设置'),
+    (Icons.grid_view_outlined, Icons.grid_view_rounded, '我的星海'),
+    (Icons.dark_mode_outlined, Icons.dark_mode_rounded, '片刻'),
   ];
 
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: (dark ? const Color(0xff2d244a) : Colors.white).withValues(
-          alpha: dark ? .86 : .94,
-        ),
-        border: Border(
-          top: BorderSide(
-            color: AppColors.border(context).withValues(alpha: .55),
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: dark
+                ? AppColors.darkCard
+                : Colors.white.withValues(alpha: .94),
+            border: Border(
+              top: BorderSide(color: AppColors.border(context)),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: dark ? .22 : .06),
+                blurRadius: 24,
+                offset: const Offset(0, -6),
+              ),
+            ],
           ),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: dark ? .22 : .06),
-            blurRadius: 24,
-            offset: const Offset(0, -6),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 64,
-          child: Row(
-            children: List.generate(_items.length, (index) {
-              final selected = index == selectedIndex;
-              final item = _items[index];
-              return Expanded(
-                child: InkWell(
-                  onTap: () => onSelected(index),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        selected ? item.$2 : item.$1,
-                        size: 22,
-                        color: selected
-                            ? dark
-                                  ? const Color(0xffc4b5fd)
-                                  : Theme.of(context).colorScheme.primary
-                            : AppColors.muted(context),
-                        shadows: selected && dark
-                            ? [
-                                Shadow(
-                                  color: const Color(
-                                    0xffa78bfa,
-                                  ).withValues(alpha: .5),
-                                  blurRadius: 8,
-                                ),
-                              ]
-                            : null,
+          child: SafeArea(
+            top: false,
+            child: SizedBox(
+              height: 64,
+              child: Row(
+                children: List.generate(_items.length, (index) {
+                  final selected = index == selectedIndex;
+                  final item = _items[index];
+                  return Expanded(
+                    child: InkWell(
+                      onTap: () => onSelected(index),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            selected ? item.$2 : item.$1,
+                            size: 22,
+                            color: selected
+                                ? dark
+                                      ? const Color(0xffc4b5fd)
+                                      : Theme.of(context).colorScheme.primary
+                                : AppColors.muted(context),
+                            shadows: selected && dark
+                                ? [
+                                    Shadow(
+                                      color: AppColors.writeViolet.withValues(
+                                        alpha: .3,
+                                      ),
+                                      blurRadius: 8,
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            item.$3,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: selected
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
+                              color: selected
+                                  ? dark
+                                        ? const Color(0xffc4b5fd)
+                                        : Theme.of(context).colorScheme.primary
+                                  : AppColors.muted(context),
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 220),
+                            width: selected ? 4 : 0,
+                            height: selected ? 4 : 0,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: dark
+                                  ? AppColors.darkAccent
+                                  : AppColors.lightAccent,
+                              boxShadow: selected
+                                  ? [
+                                      BoxShadow(
+                                        color:
+                                            (dark
+                                                    ? AppColors.darkAccent
+                                                    : AppColors.lightAccent)
+                                                .withValues(alpha: .8),
+                                        blurRadius: 9,
+                                        spreadRadius: 1,
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 3),
-                      Text(
-                        item.$3,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: selected
-                              ? FontWeight.w600
-                              : FontWeight.w400,
-                          color: selected
-                              ? dark
-                                    ? const Color(0xffc4b5fd)
-                                    : Theme.of(context).colorScheme.primary
-                              : AppColors.muted(context),
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 220),
-                        width: selected ? 4 : 0,
-                        height: selected ? 4 : 0,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: dark
-                              ? AppColors.darkAccent
-                              : AppColors.lightAccent,
-                          boxShadow: selected
-                              ? [
-                                  BoxShadow(
-                                    color:
-                                        (dark
-                                                ? AppColors.darkAccent
-                                                : AppColors.lightAccent)
-                                            .withValues(alpha: .8),
-                                    blurRadius: 9,
-                                    spreadRadius: 1,
-                                  ),
-                                ]
-                              : null,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }),
+                    ),
+                  );
+                }),
+              ),
+            ),
           ),
         ),
       ),

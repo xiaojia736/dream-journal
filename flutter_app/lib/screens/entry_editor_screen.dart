@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,6 +10,7 @@ import '../state/app_state_scope.dart';
 import '../theme/app_theme.dart';
 import '../utils/date_text.dart';
 import '../widgets/gradient_background.dart';
+import '../widgets/mood_glyph.dart';
 
 class EntryEditorScreen extends StatefulWidget {
   const EntryEditorScreen({super.key, this.entryId});
@@ -22,9 +24,11 @@ class EntryEditorScreen extends StatefulWidget {
 class _EntryEditorScreenState extends State<EntryEditorScreen> {
   final _text = TextEditingController();
   final _tags = TextEditingController();
+  final _customMood = TextEditingController();
   final _picker = ImagePicker();
   EntryType _type = EntryType.moment;
   Mood _mood = Mood.none;
+  bool _customMoodSelected = false;
   DateTime _date = DateTime.now();
   final List<XFile> _newPhotos = [];
   final Set<String> _removedPhotoIds = {};
@@ -45,6 +49,9 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
       _tags.text = entry.tags.join('，');
       _type = entry.type;
       _mood = entry.mood;
+      _customMood.text = entry.customMood;
+      _customMoodSelected = entry.customMood.trim().isNotEmpty;
+      if (_customMoodSelected) _mood = Mood.none;
       _date = entry.occurredAt;
     }
     _initialized = true;
@@ -54,6 +61,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
   void dispose() {
     _text.dispose();
     _tags.dispose();
+    _customMood.dispose();
     super.dispose();
   }
 
@@ -135,6 +143,15 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
       _message('标签太长', '每个标签最多 30 个字符。');
       return;
     }
+    final customMood = _customMoodSelected ? _customMood.text.trim() : '';
+    if (_customMoodSelected && customMood.isEmpty) {
+      _message('还没有填写心情', '写下你的自定义心情，或选择一种预置心情。');
+      return;
+    }
+    if (customMood.length > 20) {
+      _message('心情太长', '自定义心情最多 20 个字符。');
+      return;
+    }
     setState(() => _busy = true);
     try {
       final id = await AppStateScope.of(context).saveEntry(
@@ -142,7 +159,8 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
         draft: EntryDraft(
           text: _text.text,
           type: _type,
-          mood: _mood,
+          mood: _customMoodSelected ? Mood.none : _mood,
+          customMood: customMood,
           tags: tags,
           occurredAt: _date,
         ),
@@ -186,23 +204,32 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
             .toList() ??
         const <JournalPhoto>[];
     return Scaffold(
-      bottomNavigationBar: DecoratedBox(
-        decoration: BoxDecoration(
-          color: (dark ? const Color(0xff151126) : AppColors.lightBackground)
-              .withValues(alpha: .98),
-          border: Border(
-            top: BorderSide(
+      extendBody: true,
+      bottomNavigationBar: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
               color: dark
-                  ? Colors.white.withValues(alpha: .08)
-                  : AppColors.lightBorder,
+                  ? AppColors.darkCard
+                  : AppColors.lightBackground.withValues(alpha: .98),
+              border: Border(
+                top: BorderSide(
+                  color: AppColors.border(context),
+                ),
+              ),
             ),
-          ),
-        ),
-        child: SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
-            child: PrimaryAction(label: '保存记录', onPressed: _save, busy: _busy),
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
+                child: PrimaryAction(
+                  label: '保存记录',
+                  onPressed: _save,
+                  busy: _busy,
+                ),
+              ),
+            ),
           ),
         ),
       ),
@@ -219,7 +246,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                 ).scaffoldBackgroundColor.withValues(alpha: .8),
               ),
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 38),
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 150),
                 sliver: SliverList.list(
                   children: [
                     Text(
@@ -273,7 +300,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                         hintText: '今天发生了什么？写下地点、人物和心情……',
                         filled: true,
                         fillColor: dark
-                            ? const Color(0xff2d244a).withValues(alpha: .5)
+                            ? AppColors.darkCard
                             : Colors.white.withValues(alpha: .82),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(15),
@@ -297,14 +324,39 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                           ))
                             _MoodChip(
                               mood: mood,
-                              selected: _mood == mood,
-                              onTap: () => setState(
-                                () => _mood = _mood == mood ? Mood.none : mood,
-                              ),
+                              selected: !_customMoodSelected && _mood == mood,
+                              onTap: () => setState(() {
+                                _customMoodSelected = false;
+                                _customMood.clear();
+                                _mood = _mood == mood ? Mood.none : mood;
+                              }),
                             ),
+                          _MoodChip(
+                            mood: Mood.none,
+                            custom: true,
+                            selected: _customMoodSelected,
+                            onTap: () => setState(() {
+                              _customMoodSelected = !_customMoodSelected;
+                              _mood = Mood.none;
+                              if (!_customMoodSelected) _customMood.clear();
+                            }),
+                          ),
                         ],
                       ),
                     ),
+                    if (_customMoodSelected) ...[
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _customMood,
+                        maxLength: 20,
+                        maxLengthEnforcement: MaxLengthEnforcement.enforced,
+                        textInputAction: TextInputAction.done,
+                        decoration: const InputDecoration(
+                          hintText: '例如：松弛、想念、被治愈',
+                          labelText: '此刻的心情，只由你定义',
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 22),
                     const _Label('标签'),
                     TextField(
@@ -374,16 +426,17 @@ class _MoodChip extends StatelessWidget {
     required this.mood,
     required this.selected,
     required this.onTap,
+    this.custom = false,
   });
 
   final Mood mood;
   final bool selected;
   final VoidCallback onTap;
+  final bool custom;
 
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final highlight = dark ? AppColors.darkPrimary : AppColors.lightPrimary;
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: Material(
@@ -397,31 +450,37 @@ class _MoodChip extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(99),
               color: selected
-                  ? highlight.withValues(alpha: dark ? .22 : .14)
+                  ? dark
+                        ? AppColors.darkSelected
+                        : AppColors.lightPrimary.withValues(alpha: .14)
                   : Colors.transparent,
-              border: Border.all(
-                color: selected
-                    ? highlight
-                    : AppColors.border(context).withValues(alpha: .65),
-              ),
-              boxShadow: selected && dark
-                  ? [
-                      BoxShadow(
-                        color: highlight.withValues(alpha: .32),
-                        blurRadius: 10,
-                      ),
-                    ]
-                  : null,
+              border: dark
+                  ? null
+                  : Border.all(color: AppColors.lightBorder),
             ),
-            child: Text(
-              '${mood.emoji} ${mood.label}',
-              style: TextStyle(
-                color: selected
-                    ? (dark ? AppColors.darkText : AppColors.lightText)
-                    : AppColors.muted(context),
-                fontSize: 13,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                MoodGlyph(
+                  mood: mood,
+                  custom: custom,
+                  selected: selected,
+                  size: 26,
+                ),
+                const SizedBox(width: 7),
+                Text(
+                  custom ? '自定义' : mood.label,
+                  style: TextStyle(
+                    color: dark
+                        ? selected
+                              ? AppColors.darkSelectedText
+                              : AppColors.darkCapsuleMuted
+                        : AppColors.lightText,
+                    fontSize: 13,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
